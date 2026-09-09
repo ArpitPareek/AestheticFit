@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0a0a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="AestheticFit" />
+<title>AestheticFit — Two-Profile Gym & Diet Helper</title>
+<link rel="manifest" id="manifest-link" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest" defer></script>
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      fontFamily: { display: ['"Bebas Neue"', 'sans-serif'], sans: ['Sora','system-ui','sans-serif'] },
+      colors: {
+        ink: { 950:'#08090b',900:'#0e1014',800:'#15181d',700:'#1e2229',600:'#2a2f38',500:'#3a4049',400:'#5a6271',300:'#8a93a3',200:'#c3c9d4',100:'#e8ebf0' },
+        emerald:{DEFAULT:'#10b981',soft:'#34d39922'},
+        amber:{DEFAULT:'#f59e0b',soft:'#f59e0b22'},
+        rose:{DEFAULT:'#f43f5e',soft:'#f43f5e22'},
+        crimson:'#ef4444',
+      },
+    }},
+  };
+</script>
+<style>
+  html,body{background:#08090b;color:#e8ebf0;font-family:'Sora',sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding-bottom:env(safe-area-inset-bottom);}
+  .font-display{font-family:'Bebas Neue',sans-serif;letter-spacing:.02em;}
+  body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background-image:radial-gradient(rgba(255,255,255,.025) 1px,transparent 1px);background-size:3px 3px;opacity:.6;}
+  .ring-soft{box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);}
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-thumb{background:#2a2f38;border-radius:3px;}
+  .view{animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+  .ring-track{stroke:#1e2229;}
+  .card{transition:border-color .2s ease,transform .2s ease;}
+  .card:hover{border-color:#2a2f38;}
+  .nav-btn[data-active="true"]{color:#10b981;}
+  .nav-btn[data-active="true"] .nav-icon-wrap{background:#10b98115;}
+  .anim-path{stroke-dasharray:200;stroke-dashoffset:200;animation:draw 2s ease-in-out infinite alternate;}
+  @keyframes draw{to{stroke-dashoffset:0;}}
+  .pulse-soft{animation:pulseSoft 2.4s ease-in-out infinite;}
+  @keyframes pulseSoft{0%,100%{opacity:.6;transform:scale(1);}50%{opacity:1;transform:scale(1.04);}}
+  details summary::-webkit-details-marker{display:none;}
+  details[open] .chev{transform:rotate(180deg);}
+  .chev{transition:transform .2s ease;}
+  .chk{appearance:none;width:18px;height:18px;border:1.5px solid #3a4049;border-radius:5px;background:#0e1014;cursor:pointer;position:relative;flex-shrink:0;}
+  .chk:checked{background:#10b981;border-color:#10b981;}
+  .chk:checked::after{content:'';position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid #0a0a0a;border-width:0 2px 2px 0;transform:rotate(45deg);}
+  .safe-top{padding-top:env(safe-area-inset-top);}
+  .today-dot::after{content:'';position:absolute;top:3px;right:3px;width:6px;height:6px;background:#10b981;border-radius:999px;box-shadow:0 0 0 2px #08090b;}
+  .prof-btn{transition:all .2s ease;}
+  .prof-btn[data-active="true"][data-color="emerald"]{background:#10b981;color:#08090b;}
+  .prof-btn[data-active="true"][data-color="rose"]{background:#f43f5e;color:#08090b;}
+</style>
+</head>
+<body class="min-h-screen relative">
+
+<!-- HEADER -->
+<header class="safe-top sticky top-0 z-30 backdrop-blur-xl bg-ink-950/70 border-b border-ink-800">
+  <div class="max-w-3xl mx-auto px-4 py-3 space-y-3">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-emerald/15 grid place-items-center ring-soft">
+          <i data-lucide="flame" class="w-4 h-4 text-emerald"></i>
+        </div>
+        <div>
+          <div class="font-display text-xl leading-none">AestheticFit</div>
+          <div class="text-[10px] text-ink-300 -mt-0.5 tracking-wide uppercase" id="todayStr"></div>
+        </div>
+      </div>
+      <button id="resetBtn" class="text-ink-300 hover:text-crimson p-2 rounded-lg" title="Reset day">
+        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+      </button>
+    </div>
+    <!-- Profile switcher -->
+    <div class="grid grid-cols-2 gap-2 bg-ink-900 rounded-xl p-1 ring-soft">
+      <button class="prof-btn py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 text-ink-300" data-profile="arpit" data-color="emerald">
+        <i data-lucide="user" class="w-4 h-4"></i><span>Arpit</span>
+      </button>
+      <button class="prof-btn py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 text-ink-300" data-profile="harshita" data-color="rose">
+        <i data-lucide="user" class="w-4 h-4"></i><span>Harshita</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="relative z-10 max-w-3xl mx-auto px-4 pb-32 pt-4">
+
+  <!-- DASHBOARD -->
+  <section id="view-dashboard" class="view space-y-5">
+    <!-- Profile summary card -->
+    <div id="profileCard" class="bg-ink-900 ring-soft rounded-2xl p-5"></div>
+
+    <!-- Day indicator -->
+    <div class="bg-ink-900 ring-soft rounded-2xl p-3 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <i data-lucide="calendar-days" class="w-4 h-4 text-emerald"></i>
+        <div>
+          <div class="text-[10px] uppercase tracking-widest text-ink-300">Showing</div>
+          <div class="font-display text-xl leading-none" id="dashDayLabel">Monday</div>
+        </div>
+      </div>
+      <div class="text-right">
+        <div class="text-[10px] uppercase tracking-widest text-ink-300">Plan</div>
+        <div class="text-sm font-medium" id="dashWorkoutLabel">Push A</div>
+      </div>
+    </div>
+
+    <!-- Hero rings -->
+    <div class="grid grid-cols-3 gap-3">
+      <div class="bg-ink-900 ring-soft rounded-2xl p-4 flex flex-col items-center gap-2">
+        <svg width="64" height="64" viewBox="0 0 64 64" class="-rotate-90">
+          <circle cx="32" cy="32" r="26" stroke-width="6" fill="none" class="ring-track"/>
+          <circle id="ringSteps" cx="32" cy="32" r="26" stroke-width="6" fill="none" stroke="#10b981" stroke-linecap="round" stroke-dasharray="163.36" stroke-dashoffset="163.36" style="transition:stroke-dashoffset .6s ease;"/>
+        </svg>
+        <div class="text-center">
+          <div class="font-display text-xl leading-none" id="stepsVal">0</div>
+          <div class="text-[10px] text-ink-300 uppercase tracking-wider">/ 10,000 steps</div>
+        </div>
+      </div>
+      <div class="bg-ink-900 ring-soft rounded-2xl p-4 flex flex-col items-center gap-2">
+        <svg width="64" height="64" viewBox="0 0 64 64" class="-rotate-90">
+          <circle cx="32" cy="32" r="26" stroke-width="6" fill="none" class="ring-track"/>
+          <circle id="ringCal" cx="32" cy="32" r="26" stroke-width="6" fill="none" stroke="#f59e0b" stroke-linecap="round" stroke-dasharray="163.36" stroke-dashoffset="163.36" style="transition:stroke-dashoffset .6s ease;"/>
+        </svg>
+        <div class="text-center">
+          <div class="font-display text-xl leading-none"><span id="calVal">0</span></div>
+          <div class="text-[10px] text-ink-300 uppercase tracking-wider">/ <span id="calTarget">2400</span> kcal</div>
+        </div>
+      </div>
+      <div class="bg-ink-900 ring-soft rounded-2xl p-4 flex flex-col items-center gap-2">
+        <svg width="64" height="64" viewBox="0 0 64 64" class="-rotate-90">
+          <circle cx="32" cy="32" r="26" stroke-width="6" fill="none" class="ring-track"/>
+          <circle id="ringWater" cx="32" cy="32" r="26" stroke-width="6" fill="none" stroke="#38bdf8" stroke-linecap="round" stroke-dasharray="163.36" stroke-dashoffset="163.36" style="transition:stroke-dashoffset .6s ease;"/>
+        </svg>
+        <div class="text-center">
+          <div class="font-display text-xl leading-none"><span id="waterVal">0</span></div>
+          <div class="text-[10px] text-ink-300 uppercase tracking-wider">/ 8 glasses</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick add -->
+    <div class="grid grid-cols-2 gap-3">
+      <button class="quick-add bg-ink-900 ring-soft rounded-xl p-3 flex items-center justify-center gap-2 hover:bg-ink-800" data-action="addSteps" data-amount="1000">
+        <i data-lucide="footprints" class="w-4 h-4 text-emerald"></i><span class="text-sm">+1,000 steps</span>
+      </button>
+      <button class="quick-add bg-ink-900 ring-soft rounded-xl p-3 flex items-center justify-center gap-2 hover:bg-ink-800" data-action="addWater" data-amount="1">
+        <i data-lucide="droplet" class="w-4 h-4 text-sky-400"></i><span class="text-sm">+1 glass water</span>
+      </button>
+    </div>
+
+    <!-- Calorie balance -->
+    <div class="bg-gradient-to-br from-ink-900 to-ink-800 ring-soft rounded-2xl p-5">
+      <div class="flex items-baseline justify-between mb-3">
+        <h3 class="font-display text-2xl">Daily Energy</h3>
+        <span class="text-[11px] text-ink-300 uppercase tracking-wider">In · Out · Net</span>
+      </div>
+      <div class="grid grid-cols-3 gap-3 text-center">
+        <div><div class="text-2xl font-display text-emerald" id="inVal">0</div><div class="text-[10px] text-ink-300 uppercase tracking-wider">Eaten</div></div>
+        <div><div class="text-2xl font-display text-amber" id="outVal">0</div><div class="text-[10px] text-ink-300 uppercase tracking-wider">Burned (workout)</div></div>
+        <div><div class="text-2xl font-display" id="netVal">0</div><div class="text-[10px] text-ink-300 uppercase tracking-wider">Net intake</div></div>
+      </div>
+      <div id="dashTip" class="mt-3 text-[11px] text-ink-300 leading-relaxed"></div>
+    </div>
+
+    <!-- Health checklist -->
+    <div class="bg-ink-900 ring-soft rounded-2xl p-5">
+      <h3 class="font-display text-2xl mb-3 flex items-center gap-2">
+        <i data-lucide="heart-pulse" class="w-5 h-5 text-emerald"></i>Daily Health Checklist
+      </h3>
+      <div id="checklistBox" class="space-y-2"></div>
+    </div>
+
+    <!-- Recomp / fatloss math -->
+    <div id="mathCard" class="bg-ink-900 ring-soft rounded-2xl p-5"></div>
+  </section>
+
+  <!-- WORKOUT -->
+  <section id="view-workout" class="view space-y-4 hidden">
+    <div id="workoutHero" class="bg-gradient-to-br from-emerald/10 to-transparent ring-soft rounded-2xl p-5"></div>
+    <div id="workoutDayPicker" class="grid grid-cols-7 gap-1.5"></div>
+    <div id="workoutBody" class="space-y-3"></div>
+    <div id="workoutSafety" class="bg-amber/10 ring-soft rounded-2xl p-4 flex gap-3 items-start"></div>
+  </section>
+
+  <!-- DIET -->
+  <section id="view-diet" class="view space-y-4 hidden">
+    <div id="dietHero" class="bg-gradient-to-br from-amber/10 to-transparent ring-soft rounded-2xl p-5"></div>
+    <div id="dietDayPicker" class="grid grid-cols-7 gap-1.5"></div>
+    <div class="bg-ink-900 ring-soft rounded-2xl p-4">
+      <div class="flex items-baseline justify-between mb-2">
+        <div class="text-[10px] uppercase tracking-widest text-ink-300">Day Total · <span id="dietDayLabel">Monday</span></div>
+        <div class="text-[10px] uppercase tracking-widest text-ink-300">Plan · <span id="dietPlanTotal">2400 kcal</span></div>
+      </div>
+      <div class="grid grid-cols-5 gap-2 text-center">
+        <div class="bg-ink-800/60 rounded-lg py-2"><div class="text-[10px] uppercase text-ink-300">kcal</div><div class="font-display text-lg text-amber"><span id="dCal">0</span>/<span id="dCalMax">2400</span></div></div>
+        <div class="bg-ink-800/60 rounded-lg py-2"><div class="text-[10px] uppercase text-ink-300">Pro</div><div class="font-display text-lg text-emerald" id="dPro">0g</div></div>
+        <div class="bg-ink-800/60 rounded-lg py-2"><div class="text-[10px] uppercase text-ink-300">Carb</div><div class="font-display text-lg text-amber" id="dCarb">0g</div></div>
+        <div class="bg-ink-800/60 rounded-lg py-2"><div class="text-[10px] uppercase text-ink-300">Fat</div><div class="font-display text-lg text-sky-400" id="dFat">0g</div></div>
+        <div class="bg-ink-800/60 rounded-lg py-2"><div class="text-[10px] uppercase text-ink-300">Fib</div><div class="font-display text-lg text-emerald" id="dFib">0g</div></div>
+      </div>
+    </div>
+    <div id="dietBody" class="space-y-3"></div>
+    <div id="pantryCard" class="bg-ink-900 ring-soft rounded-2xl p-5"></div>
+  </section>
+
+  <!-- PHYSIO -->
+  <section id="view-physio" class="view space-y-4 hidden">
+    <div id="physioHero" class="bg-gradient-to-br from-sky-500/10 to-transparent ring-soft rounded-2xl p-5"></div>
+    <div id="physioBody" class="space-y-3"></div>
+    <div id="physioSafety" class="bg-crimson/10 ring-soft rounded-2xl p-4 flex gap-3 items-start"></div>
+  </section>
+</main>
+
+<nav class="fixed bottom-0 left-0 right-0 z-30 bg-ink-950/85 backdrop-blur-xl border-t border-ink-800">
+  <div class="max-w-3xl mx-auto grid grid-cols-4 px-2 py-2" style="padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));">
+    <button class="nav-btn flex flex-col items-center gap-1 py-1.5 text-ink-300" data-view="dashboard" data-active="true">
+      <div class="nav-icon-wrap w-9 h-9 grid place-items-center rounded-xl"><i data-lucide="layout-dashboard" class="w-5 h-5"></i></div>
+      <span class="text-[10px] uppercase tracking-wider">Home</span>
+    </button>
+    <button class="nav-btn flex flex-col items-center gap-1 py-1.5 text-ink-300" data-view="workout">
+      <div class="nav-icon-wrap w-9 h-9 grid place-items-center rounded-xl"><i data-lucide="dumbbell" class="w-5 h-5"></i></div>
+      <span class="text-[10px] uppercase tracking-wider">Workout</span>
+    </button>
+    <button class="nav-btn flex flex-col items-center gap-1 py-1.5 text-ink-300" data-view="diet">
+      <div class="nav-icon-wrap w-9 h-9 grid place-items-center rounded-xl"><i data-lucide="utensils" class="w-5 h-5"></i></div>
+      <span class="text-[10px] uppercase tracking-wider">Diet</span>
+    </button>
+    <button class="nav-btn flex flex-col items-center gap-1 py-1.5 text-ink-300" data-view="physio">
+      <div class="nav-icon-wrap w-9 h-9 grid place-items-center rounded-xl"><i data-lucide="activity" class="w-5 h-5"></i></div>
+      <span class="text-[10px] uppercase tracking-wider">Physio</span>
+    </button>
+  </div>
+</nav>
+
+<script>
+/* ================================================================
+   AESTHETICFIT v3 — Two-Profile PWA (Arpit + Harshita)
+   ================================================================ */
+
+/* ---------- 0. SAFE ICON HELPER ---------- */
+function safeIcons(){
+  if(typeof lucide!=='undefined'&&lucide.createIcons){ try{lucide.createIcons();}catch(e){} }
+  else{ setTimeout(()=>{ if(typeof lucide!=='undefined'&&lucide.createIcons){ try{lucide.createIcons();}catch(e){} } },200); }
+}
+
+/* ---------- 1. DAY HELPERS ---------- */
+// 1=Mon ... 7=Sun
+const DAY_LABELS = {1:'Monday',2:'Tuesday',3:'Wednesday',4:'Thursday',5:'Friday',6:'Saturday',7:'Sunday'};
+const DAY_SHORT  = {1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat',7:'Sun'};
+function todayDow(){ const d=new Date().getDay(); return d===0?7:d; }
+function getWeekStart(){
+  const d=new Date(); const dow=d.getDay(); const diff=dow===0?-6:1-dow;
+  d.setDate(d.getDate()+diff);
+  return d.toISOString().slice(0,10);
+}
+
+/* ---------- 2. SVG POSE LIBRARY (shared) ---------- */
+function svgPose(type){
+  const base=(inner)=>`<svg viewBox="0 0 200 120" class="w-full h-full">${inner}</svg>`;
+  const STROKE=`stroke="#10b981" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"`;
+  const BAR=`stroke="#f59e0b" stroke-width="3" stroke-linecap="round"`;
+  const BENCH=`stroke="#5a6271" stroke-width="2" fill="#15181d"`;
+  const HEAD=(cx,cy)=>`<circle cx="${cx}" cy="${cy}" r="7" ${STROKE}/>`;
+  switch(type){
+    case 'machineChestPress': return base(`<rect x="20" y="80" width="60" height="6" ${BENCH}/><rect x="20" y="40" width="6" height="42" ${BENCH}/>${HEAD(50,46)}<path d="M50 53 L50 80 M50 60 L78 55 M50 60 L78 75" ${STROKE}/><line x1="78" y1="55" x2="120" y2="50" ${BAR}/><line x1="78" y1="75" x2="120" y2="80" ${BAR}/><circle cx="125" cy="50" r="6" fill="#f59e0b"/><circle cx="125" cy="80" r="6" fill="#f59e0b"/>`);
+    case 'inclineDB': return base(`<path d="M30 95 L160 60" ${BENCH}/>${HEAD(80,65)}<path d="M85 70 L120 78 M85 70 L120 50" ${STROKE}/><circle cx="125" cy="48" r="5" fill="#f59e0b"/><circle cx="125" cy="80" r="5" fill="#f59e0b"/>`);
+    case 'cableFly': return base(`${HEAD(100,40)}<path d="M100 47 L100 85" ${STROKE}/><path d="M100 55 L60 45 M100 55 L140 45" ${STROKE}/><rect x="20" y="20" width="14" height="80" fill="#15181d" stroke="#5a6271"/><rect x="166" y="20" width="14" height="80" fill="#15181d" stroke="#5a6271"/>`);
+    case 'tricepPush': return base(`${HEAD(100,40)}<path d="M100 47 L100 95" ${STROKE}/><path d="M100 55 L120 70 L130 90 M100 55 L80 70 L70 90" ${STROKE}/><line x1="60" y1="92" x2="140" y2="92" ${BAR}/>`);
+    case 'lateralRaise': return base(`${HEAD(100,40)}<path d="M100 47 L100 95" ${STROKE}/><path d="M100 55 L60 50 M100 55 L140 50" ${STROKE}/><circle cx="55" cy="50" r="6" fill="#f59e0b"/><circle cx="145" cy="50" r="6" fill="#f59e0b"/>`);
+    case 'latPulldown': return base(`<line x1="40" y1="20" x2="160" y2="20" ${BAR}/><path d="M70 20 L70 55 M130 20 L130 55" ${STROKE}/>${HEAD(100,60)}<path d="M100 67 L100 100" ${STROKE}/><path d="M100 70 L70 55 M100 70 L130 55" ${STROKE}/><rect x="85" y="100" width="30" height="6" fill="#5a6271"/>`);
+    case 'chestSupportedRow': return base(`<path d="M30 80 L100 50 L100 30" ${BENCH}/>${HEAD(100,38)}<path d="M100 45 L100 70" ${STROKE}/><path d="M100 55 L130 65 M100 55 L70 65" ${STROKE}/><circle cx="135" cy="68" r="6" fill="#f59e0b"/><circle cx="65" cy="68" r="6" fill="#f59e0b"/>`);
+    case 'facePull': return base(`${HEAD(100,45)}<path d="M100 52 L100 95" ${STROKE}/><path d="M100 58 L70 48 M100 58 L130 48" ${STROKE}/><line x1="20" y1="35" x2="70" y2="48" stroke="#5a6271" stroke-width="1.5" stroke-dasharray="3 3"/><line x1="180" y1="35" x2="130" y2="48" stroke="#5a6271" stroke-width="1.5" stroke-dasharray="3 3"/>`);
+    case 'bicepCurl': return base(`${HEAD(100,40)}<path d="M100 47 L100 100" ${STROKE}/><path d="M100 55 L75 65 L75 80 M100 55 L125 65 L125 80" ${STROKE}/><circle cx="75" cy="85" r="6" fill="#f59e0b"/><circle cx="125" cy="85" r="6" fill="#f59e0b"/>`);
+    case 'hammerCurl': return base(`${HEAD(100,40)}<path d="M100 47 L100 100" ${STROKE}/><path d="M100 55 L80 70 L82 88 M100 55 L120 70 L118 88" ${STROKE}/><rect x="76" y="86" width="12" height="6" fill="#f59e0b"/><rect x="112" y="86" width="12" height="6" fill="#f59e0b"/>`);
+    case 'legPress': return base(`<path d="M30 95 L150 60 L150 30" ${BENCH}/>${HEAD(60,80)}<path d="M65 85 L100 75" ${STROKE}/><path d="M100 75 L120 55 L140 50" ${STROKE}/><rect x="135" y="35" width="40" height="35" fill="#15181d" stroke="#f59e0b" stroke-width="2"/>`);
+    case 'legExt': return base(`<rect x="60" y="60" width="70" height="20" ${BENCH}/>${HEAD(70,55)}<path d="M70 62 L120 70 L155 90" ${STROKE}/><circle cx="155" cy="90" r="6" fill="#f59e0b"/>`);
+    case 'lunges': return base(`${HEAD(80,30)}<path d="M80 37 L80 70" ${STROKE}/><path d="M80 70 L50 100 M80 70 L120 90 L130 100" ${STROKE}/><path d="M80 50 L65 65 M80 50 L95 65" ${STROKE}/><circle cx="60" cy="68" r="5" fill="#f59e0b"/><circle cx="100" cy="68" r="5" fill="#f59e0b"/>`);
+    case 'calf': return base(`<rect x="60" y="60" width="80" height="15" ${BENCH}/>${HEAD(100,30)}<path d="M100 37 L100 60" ${STROKE}/><path d="M100 60 L85 95 M100 60 L115 95" ${STROKE}/><path d="M80 95 L140 95 L140 90 L80 90 Z" fill="#f59e0b"/>`);
+    case 'plank': return base(`${HEAD(40,55)}<path d="M45 60 L150 60" ${STROKE}/><path d="M50 62 L55 90 M145 62 L150 90" ${STROKE}/><path d="M40 100 L170 100" stroke="#5a6271" stroke-width="2"/>`);
+    case 'machineShoulder': return base(`<rect x="20" y="50" width="60" height="50" ${BENCH}/>${HEAD(50,46)}<path d="M50 53 L50 80" ${STROKE}/><path d="M50 55 L75 35 M50 55 L25 35" ${STROKE}/><line x1="75" y1="35" x2="130" y2="30" ${BAR}/><circle cx="135" cy="30" r="6" fill="#f59e0b"/>`);
+    case 'frontRaise': return base(`${HEAD(100,40)}<path d="M100 47 L100 95" ${STROKE}/><path d="M100 55 L130 45 L155 50 M100 55 L70 45 L45 50" ${STROKE}/><circle cx="158" cy="52" r="5" fill="#f59e0b"/><circle cx="42" cy="52" r="5" fill="#f59e0b"/>`);
+    case 'tricepOverhead': return base(`${HEAD(100,45)}<path d="M100 52 L100 100" ${STROKE}/><path d="M100 58 L85 35 L100 22 M100 58 L115 35 L100 22" ${STROKE}/><line x1="80" y1="20" x2="120" y2="20" ${BAR}/>`);
+    case 'cableRow': return base(`${HEAD(50,55)}<path d="M50 62 L50 95 M50 95 L80 95" ${STROKE}/><path d="M50 65 L100 60" ${STROKE}/><rect x="170" y="40" width="10" height="40" fill="#15181d" stroke="#5a6271"/><rect x="95" y="55" width="10" height="10" fill="#f59e0b"/>`);
+    case 'singleArmRow': return base(`<path d="M30 80 L100 60" ${BENCH}/>${HEAD(95,50)}<path d="M95 55 L95 75" ${STROKE}/><path d="M95 60 L130 75" ${STROKE}/><circle cx="135" cy="78" r="6" fill="#f59e0b"/>`);
+    case 'reversePec': return base(`${HEAD(100,40)}<path d="M100 47 L100 100" ${STROKE}/><path d="M100 50 L60 60 M100 50 L140 60" ${STROKE}/><rect x="50" y="55" width="14" height="14" fill="#15181d" stroke="#f59e0b" stroke-width="2"/><rect x="136" y="55" width="14" height="14" fill="#15181d" stroke="#f59e0b" stroke-width="2"/>`);
+    case 'preacher': return base(`<path d="M70 90 L70 50 L140 30" ${BENCH}/>${HEAD(60,40)}<path d="M60 47 L65 85" ${STROKE}/><path d="M65 55 L100 35 L130 50" ${STROKE}/><circle cx="135" cy="52" r="5" fill="#f59e0b"/>`);
+    case 'grip': return base(`${HEAD(100,40)}<path d="M100 47 L100 90" ${STROKE}/><path d="M100 55 L70 85 M100 55 L130 85" ${STROKE}/><rect x="55" y="80" width="30" height="12" fill="#f59e0b"/><rect x="115" y="80" width="30" height="12" fill="#f59e0b"/>`);
+    case 'rdl': return base(`${HEAD(60,30)}<path d="M60 37 L75 65" ${STROKE}/><path d="M75 65 L100 90" ${STROKE}/><path d="M65 50 L100 75 L130 80" ${STROKE}/><line x1="100" y1="78" x2="160" y2="82" ${BAR}/>`);
+    case 'hipThrust': return base(`<rect x="20" y="65" width="60" height="10" ${BENCH}/>${HEAD(40,55)}<path d="M45 60 L100 60 L130 90" ${STROKE}/><line x1="80" y1="50" x2="140" y2="55" ${BAR}/>`);
+    case 'legCurl': return base(`<rect x="30" y="60" width="100" height="15" ${BENCH}/>${HEAD(45,50)}<path d="M45 57 L130 65 L160 80" ${STROKE}/><circle cx="160" cy="83" r="6" fill="#f59e0b"/>`);
+    case 'glute': return base(`${HEAD(50,40)}<path d="M55 45 L80 70 L70 75" ${STROKE}/><path d="M80 70 L140 75" ${STROKE}/><rect x="135" y="72" width="8" height="8" fill="#f59e0b"/>`);
+    case 'legRaise': return base(`<line x1="80" y1="25" x2="120" y2="25" ${BAR}/>${HEAD(100,35)}<path d="M100 42 L100 70" ${STROKE}/><path d="M90 30 L80 25 M110 30 L120 25" ${STROKE}/><path d="M100 60 L150 60" ${STROKE}/>`);
+    case 'gobletSquat': return base(`${HEAD(100,30)}<rect x="88" y="42" width="24" height="18" fill="#f59e0b" rx="3"/><path d="M100 60 L85 90 M100 60 L115 90" ${STROKE}/><path d="M85 90 L80 100 M115 90 L120 100" ${STROKE}/><path d="M50 100 L150 100" stroke="#5a6271" stroke-width="2"/>`);
+    case 'dbRow': return base(`${HEAD(60,45)}<path d="M65 50 L110 65 L145 60" ${STROKE}/><path d="M110 65 L110 90" ${STROKE}/><rect x="140" y="55" width="12" height="14" fill="#f59e0b"/>`);
+    case 'pushup': return base(`${HEAD(40,55)}<path d="M45 60 L100 60 L150 55" ${STROKE}/><path d="M60 62 L60 90 M100 62 L100 90 M148 60 L148 90" ${STROKE}/><path d="M50 92 L160 92" stroke="#5a6271" stroke-width="2"/>`);
+    case 'gluteBridge': return base(`${HEAD(40,60)}<path d="M45 65 L120 65 L145 90" ${STROKE}/><path d="M40 90 L170 90" stroke="#5a6271" stroke-width="2"/>`);
+    case 'birdDog': return base(`${HEAD(50,55)}<path d="M55 60 L110 60" ${STROKE}/><path d="M110 60 L155 45" ${STROKE}/><path d="M55 62 L45 85" ${STROKE}/><path d="M110 62 L150 88" ${STROKE}/><path d="M40 90 L170 90" stroke="#5a6271" stroke-width="2"/>`);
+    case 'deadBug': return base(`${HEAD(160,55)}<path d="M155 60 L60 60" ${STROKE}/><path d="M60 60 L45 40 M60 60 L45 80" ${STROKE}/><path d="M110 60 L110 30 M110 60 L110 90" ${STROKE}/>`);
+    case 'sidePlank': return base(`${HEAD(40,55)}<path d="M45 60 L155 90 L45 90 Z" ${STROKE}/><path d="M40 92 L170 92" stroke="#5a6271" stroke-width="2"/>`);
+    case 'wallAngel': return base(`<rect x="30" y="20" width="4" height="90" fill="#5a6271"/>${HEAD(70,40)}<path d="M70 47 L70 100" ${STROKE}/><path d="M70 55 L45 40 M70 55 L100 40" ${STROKE}/><path d="M45 40 L40 25 M100 40 L110 25" ${STROKE}/>`);
+    case 'catCow': return base(`${HEAD(45,50)}<path d="M50 55 Q100 40 155 55" ${STROKE}/><path d="M55 60 L55 90 M150 60 L150 90" ${STROKE}/>`);
+    case 'hipStretch': return base(`${HEAD(50,50)}<path d="M55 55 L90 70" ${STROKE}/><path d="M90 70 L130 55 M90 70 L120 100" ${STROKE}/><path d="M40 100 L160 100" stroke="#5a6271" stroke-width="2"/>`);
+    case 'walk': return base(`${HEAD(100,25)}<path d="M100 32 L100 65" ${STROKE}/><path d="M100 65 L80 100 M100 65 L120 95" ${STROKE}/><path d="M100 45 L80 60 M100 45 L125 55" ${STROKE}/><path d="M30 105 L170 105" stroke="#5a6271" stroke-width="2" stroke-dasharray="4 4"/>`);
+    case 'chinTuck': return base(`${HEAD(80,55)}<path d="M80 62 L80 95" ${STROKE}/>${HEAD(130,55)}<path d="M130 62 L130 95" ${STROKE}/><path d="M138 50 L150 50" stroke="#10b981" stroke-width="2"/>`);
+    case 'bandPullApart': return base(`${HEAD(100,40)}<path d="M100 47 L100 95" ${STROKE}/><path d="M100 55 L60 55 M100 55 L140 55" ${STROKE}/><line x1="50" y1="55" x2="150" y2="55" stroke="#f59e0b" stroke-width="3" stroke-dasharray="8 4"/>`);
+    case 'nerveFloss': return base(`${HEAD(100,40)}<path d="M100 47 L100 95" ${STROKE}/><path d="M100 55 L150 55 L170 35" ${STROKE}/><circle cx="170" cy="35" r="3" fill="#10b981" class="pulse-soft"/>`);
+    case 'wrist': return base(`${HEAD(100,40)}<path d="M100 47 L100 95" ${STROKE}/><path d="M100 55 L150 60 L160 80" ${STROKE}/><circle cx="160" cy="83" r="8" stroke="#f59e0b" stroke-width="2" fill="none"/>`);
+    case 'shrug': return base(`${HEAD(100,35)}<path d="M100 42 L100 95" ${STROKE}/><path d="M80 50 L70 80 M120 50 L130 80" ${STROKE}/><path d="M85 45 L80 35 M115 45 L120 35" stroke="#10b981" stroke-width="2"/>`);
+    case 'yoga': return base(`${HEAD(100,35)}<path d="M100 42 L100 75" ${STROKE}/><path d="M100 50 L60 55 M100 50 L140 55" ${STROKE}/><path d="M100 75 L70 90 L60 100 M100 75 L130 90 L140 100" ${STROKE}/>`);
+    default: return base(`${HEAD(100,40)}<path d="M100 47 L100 95 M100 55 L70 75 M100 55 L130 75" ${STROKE}/>`);
+  }
+}
+
+/* ================================================================
+   3. PROFILES  —  Arpit + Harshita
+   ================================================================ */
+
+const PROFILES = {
+
+/* ---------------- ARPIT ---------------- */
+arpit: {
+  name: 'Arpit', age: 29, height: `5'8"`, weight: 66, goal: 'Athletic recomp · First-time lifter',
+  color: 'emerald', accent: '#10b981', icon: 'user',
+  targets: { cal: 2400, protein: 130, steps: 10000, water: 8, restCal: 2650 },
+  mathRows: [
+    ['BMR (Mifflin-St Jeor)', '~1,591 kcal'],
+    ['TDEE (6-day training + 10k steps)', '~2,465 kcal'],
+    ['Target intake Mon–Sat', '~2,400 kcal', 'text-emerald'],
+    ['Sunday (relaxed)', '~2,650 kcal', 'text-amber'],
+    ['Protein floor (~2 g/kg)', '130–140 g', 'text-emerald'],
+    ['Fats / Carbs', '60–70 g / 280–320 g'],
+  ],
+  checklist: [
+    { id:'nosmoke', label:'No smoking today', icon:'ban' },
+    { id:'noalc',   label:'No alcohol today', icon:'wine-off' },
+    { id:'nerve',   label:'Nerve flossing done', icon:'waves' },
+    { id:'warmup',  label:'Cervical warm-up done', icon:'rotate-3d' },
+    { id:'grip',    label:'Grip work done', icon:'hand' },
+    { id:'sleep',   label:'7+ hrs sleep last night', icon:'moon' },
+  ],
+  pantryIntro: 'Budget Indian veg protein anchors',
+  pantry: [
+    ['Paneer','18g pro / 100g'],['Soya chunks','52g pro / 100g'],['Tofu','12g pro / 100g'],
+    ['Curd / Greek yogurt','10g pro / 100g'],['Dal (cooked)','9g pro / cup'],['Chickpeas','15g pro / cup'],
+    ['Peanuts','26g pro / 100g'],['Oats','13g pro / 100g'],
+  ],
+  workoutHero: {
+    title: 'Push · Pull · Legs ×2',
+    subtitle: '6 AM Cervical-Safe Split · Mon–Sat',
+    blurb: 'First 4 weeks: focus on FORM over weight. Every exercise below has a start weight — leave 2 reps in the tank. Add 2.5kg only when all sets feel easy for 2 sessions in a row.',
+    icon: 'dumbbell',
+  },
+  workoutSafety: `<i data-lucide="alert-triangle" class="w-5 h-5 text-amber flex-shrink-0 mt-0.5"></i>
+    <div class="text-xs text-ink-200 leading-relaxed">
+      <strong class="text-amber">Cervical safety:</strong> Chin tucked, never crane your neck up. Stop any movement that pinches. If cervical pain &gt;3/10, skip pressing — do Physio + Pull only.
+      <br/><br/><strong class="text-emerald">Progression rule:</strong> When you complete every set at the top rep with 2 reps in reserve for 2 sessions in a row, add 2.5kg (or the smallest jump the machine allows). Never sacrifice form for weight.
+    </div>`,
+  physioHero: {
+    subtitle: 'Prehab · Recovery · Nerves',
+    title: 'Physiotherapy',
+    blurb: 'Warm-up before every session. Nerve flossing daily — especially Sunday.',
+    icon: 'activity', color: 'sky-400',
+  },
+  physioSafety: `<i data-lucide="shield-alert" class="w-5 h-5 text-crimson flex-shrink-0 mt-0.5"></i>
+    <div class="text-xs text-ink-200 leading-relaxed">
+      <strong class="text-crimson">Get clearance first:</strong> This plan assumes your cervical issue is mechanical and your physician/physio approves loaded exercise. Sharp shooting pain, tingling down the arm, or numbness — stop and see your doctor.
+    </div>`,
+
+  workouts: {
+    1: { name:'Push A · Chest', icon:'chevron-up', summary:'Cervical-neutral pressing. Chest pump + light triceps.', isRest:false, exercises: [
+      { name:'Machine Chest Press', muscle:'Chest · Triceps', sets:'4 × 10', cal:55, pose:'machineChestPress', startWeight:'20–25 kg (pin selector)',
+        cues:['Adjust seat so handles align with mid-chest','Press head firmly into pad — never lift it off','Squeeze chest at full extension, control 2s on the way back'], alt:'Push-ups on knees (3 × AMRAP)' },
+      { name:'Incline Dumbbell Press (Low 15°)', muscle:'Upper Chest', sets:'3 × 10', cal:50, pose:'inclineDB', startWeight:'6 kg each hand',
+        cues:['Elbows at ~45° from torso, not flared','Chin tucked, head pressed into pad','Lead with weaker (left) arm in matched reps'], alt:'Flat machine press' },
+      { name:'Cable Crossover (Mid)', muscle:'Chest', sets:'3 × 12', cal:35, pose:'cableFly', startWeight:'5 kg each side',
+        cues:['Slight forward lean, soft bend in elbows','Hands meet at sternum, squeeze 1s','Do NOT crane neck forward'], alt:'Pec deck machine' },
+      { name:'Triceps Rope Pushdown', muscle:'Triceps', sets:'4 × 12', cal:30, pose:'tricepPush', startWeight:'10 kg (pin selector)',
+        cues:['Elbows pinned to ribs','Split the rope at the bottom','If right-hand grip slips, use figure-8 strap'], alt:'Dumbbell kickback (chest-supported)' },
+      { name:'Seated Dumbbell Lateral Raise', muscle:'Side Delts', sets:'3 × 15', cal:28, pose:'lateralRaise', startWeight:'3 kg each hand',
+        cues:['Pour the jug — pinkies slightly up','Stop at shoulder height, no shrug','Light weight, slow tempo (2-1-2)'], alt:'Cable lateral (one arm)' },
+    ]},
+    2: { name:'Pull A · Back Width', icon:'chevron-down', summary:'Width + posture. Face pulls are non-negotiable for your neck.', isRest:false, exercises: [
+      { name:'Lat Pulldown (Neutral Grip)', muscle:'Lats · Biceps', sets:'4 × 10', cal:50, pose:'latPulldown', startWeight:'25 kg (pin selector)',
+        cues:['Neutral grip = wrist-friendly','Pull to upper chest, NOT behind neck','Drive elbows down, squeeze lats'], alt:'Assisted pull-up machine' },
+      { name:'Chest-Supported T-Bar Row', muscle:'Mid-Back · Rhomboids', sets:'4 × 10', cal:60, pose:'chestSupportedRow', startWeight:'Handle + 10 kg plate',
+        cues:['Chest pad fully supports — zero spinal load','Pull to lower ribs, squeeze 1s','Use lifting straps if grip fails'], alt:'Seated cable row' },
+      { name:'Face Pulls', muscle:'Rear Delts · Traps · Posture', sets:'4 × 15', cal:30, pose:'facePull', startWeight:'10 kg (light, form first)',
+        cues:['Set cable at forehead height','Pull rope to ears, externally rotate — like a double biceps pose','BEST exercise for your cervical posture'], alt:'Reverse pec deck' },
+      { name:'Dumbbell Curl (Lead with Left)', muscle:'Biceps', sets:'3 × 10 each arm', cal:25, pose:'bicepCurl', startWeight:'6 kg each hand',
+        cues:['Start with WEAKER (left) arm — match reps on the right','No swinging — control the negative','Wrist straight, not bent'], alt:'EZ-bar curl' },
+      { name:'Hammer Curl', muscle:'Brachialis · Forearm', sets:'3 × 10', cal:22, pose:'hammerCurl', startWeight:'6 kg each hand',
+        cues:['Neutral grip strengthens grip + forearm','Adds brachialis / arm thickness','Great for weaker right grip'], alt:'Cable hammer rope curl' },
+    ]},
+    3: { name:'Legs A · Quad Focus', icon:'arrow-down-up', summary:'No barbell back squat. Press + machines spare the spine.', isRest:false, exercises: [
+      { name:'Leg Press', muscle:'Quads · Glutes', sets:'4 × 10', cal:80, pose:'legPress', startWeight:'40–50 kg (2 plates + sled)',
+        cues:['Feet shoulder-width, mid-platform','Lower back PRESSED into seat — no rounding','Do not lock knees at top'], alt:'Hack squat machine' },
+      { name:'Leg Extension', muscle:'Quads (Isolation)', sets:'3 × 12', cal:35, pose:'legExt', startWeight:'15 kg (pin selector)',
+        cues:['Pad just above ankle, not on shin','Pause 1s at top','Slow negative'], alt:'Sissy squat (bodyweight)' },
+      { name:'Walking Lunges (Bodyweight → light DBs)', muscle:'Quads · Glutes · Balance', sets:'3 × 10 each leg', cal:50, pose:'lunges', startWeight:'Bodyweight for weeks 1–2, then 5 kg DBs',
+        cues:['Step long — front knee tracks over ankle','Chest up, eyes forward — NOT down','Bodyweight for first 2 weeks'], alt:'Reverse lunges (easier on knees)' },
+      { name:'Seated Calf Raise', muscle:'Soleus', sets:'4 × 15', cal:25, pose:'calf', startWeight:'20 kg',
+        cues:['Full stretch bottom, full squeeze top','2s hold at top','No bouncing — protect Achilles'], alt:'Standing calf raise on a step' },
+      { name:'Plank Hold', muscle:'Core · Stability', sets:'3 × 30s', cal:20, pose:'plank', startWeight:'Bodyweight (start with 20s if 30s too hard)',
+        cues:['Straight line heel to head','Tuck chin slightly','Squeeze glutes to protect lower back'], alt:'Dead bug (lying)' },
+    ]},
+    4: { name:'Push B · Shoulders', icon:'chevron-up', summary:'Machine pressing only. NO standing barbell overhead.', isRest:false, exercises: [
+      { name:'Machine Shoulder Press (Back Supported)', muscle:'Front/Side Delts', sets:'4 × 10', cal:55, pose:'machineShoulder', startWeight:'15–20 kg (pin selector)',
+        cues:['Back FLAT against pad — never arch off','Press head into pad, do not look up','Use neutral handles if right grip slips'], alt:'Seated Arnold press (light DBs)' },
+      { name:'Seated DB Lateral Raise', muscle:'Side Delts', sets:'4 × 12', cal:30, pose:'lateralRaise', startWeight:'3–4 kg each',
+        cues:['Seat back upright — no momentum','Stop at shoulder height','Hold, don\'t death-grip'], alt:'Cable lateral (one-arm)' },
+      { name:'Incline Cable Fly', muscle:'Upper Chest', sets:'3 × 12', cal:35, pose:'cableFly', startWeight:'5 kg each side',
+        cues:['Cables set low, pull up + across','Soft elbow bend throughout','Meet in front of nose level'], alt:'Incline DB fly' },
+      { name:'Cable Triceps Overhead Extension', muscle:'Triceps Long Head', sets:'3 × 12', cal:30, pose:'tricepOverhead', startWeight:'10 kg (pin selector)',
+        cues:['Face away from cable, rope behind head','Keep elbows narrow','Stretch fully at the bottom'], alt:'DB overhead extension (one DB, both hands)' },
+      { name:'Cable Front Raise', muscle:'Front Delts', sets:'3 × 12', cal:25, pose:'frontRaise', startWeight:'7.5 kg (pin selector)',
+        cues:['Raise to eye level only','Slight bend in elbows','No leaning back — spine neutral'], alt:'Light plate front raise' },
+    ]},
+    5: { name:'Pull B · Back Thickness', icon:'chevron-down', summary:'Rows + arm work. Grip finisher at the end.', isRest:false, exercises: [
+      { name:'Seated Cable Row (Neutral Grip)', muscle:'Mid-Back · Lats', sets:'4 × 10', cal:60, pose:'cableRow', startWeight:'25 kg (pin selector)',
+        cues:['Chest tall, slight backward lean only','Pull handle to belly button','Squeeze shoulder blades 1s'], alt:'Chest-supported row machine' },
+      { name:'Single-Arm DB Row (Bench Support)', muscle:'Lats · Rhomboids', sets:'3 × 10 each', cal:45, pose:'singleArmRow', startWeight:'8 kg (LEFT first — match reps on right)',
+        cues:['Knee + free hand on bench — back flat','LEFT side first, match reps on right','Pull to hip, not chest'], alt:'Inverted row (Smith machine)' },
+      { name:'Reverse Pec Deck', muscle:'Rear Delts · Postural', sets:'4 × 15', cal:30, pose:'reversePec', startWeight:'15 kg (pin selector)',
+        cues:['Chest pressed into pad','Drive elbows back, not up','Critical for forward-head posture'], alt:'Bent-over reverse fly (chest on incline bench)' },
+      { name:'Preacher Curl (Cable or Machine)', muscle:'Biceps Peak', sets:'3 × 10', cal:25, pose:'preacher', startWeight:'10 kg (or empty EZ bar ~7 kg)',
+        cues:['Armpits sit on pad — no shoulder swing','Full stretch at bottom (controlled)','Stop 90% if elbow twinges'], alt:'EZ-bar curl, back against wall' },
+      { name:'Farmer Carry (Grip Builder)', muscle:'Forearm · Grip · Traps', sets:'3 × 30s', cal:35, pose:'grip', startWeight:'12 kg each (LIGHTER on weaker right)',
+        cues:['Hold heavy DBs at sides, walk slow','Stand tall, shoulders back','Use LIGHTER weight on weaker right hand'], alt:'Dead hang from bar (30s)' },
+    ]},
+    6: { name:'Legs B · Posterior', icon:'arrow-down-up', summary:'Hamstrings, glutes, core. Hip-hinge focus.', isRest:false, exercises: [
+      { name:'Romanian Deadlift (Light DBs)', muscle:'Hamstrings · Glutes', sets:'4 × 10', cal:65, pose:'rdl', startWeight:'8 kg each hand',
+        cues:['DBs in front of thighs, hinge at hips (push butt back)','Soft knees, NEUTRAL spine','Stop where flexibility allows — no lumbar rounding'], alt:'Cable pull-through' },
+      { name:'Hip Thrust (Barbell on Hips)', muscle:'Glutes', sets:'4 × 10', cal:55, pose:'hipThrust', startWeight:'20 kg (bar only) for 2 weeks, then 30 kg',
+        cues:['Upper back on bench, weight on HIPS not spine','Chin tucked, eyes forward','Squeeze glutes hard at the top'], alt:'Glute bridge (bodyweight)' },
+      { name:'Seated Leg Curl', muscle:'Hamstrings', sets:'4 × 12', cal:40, pose:'legCurl', startWeight:'15 kg (pin selector)',
+        cues:['Pad above heel, not on calf','Slow negative (3s)','Full range of motion'], alt:'Lying leg curl' },
+      { name:'Cable Glute Kickback', muscle:'Glute Max', sets:'3 × 12 each', cal:30, pose:'glute', startWeight:'5 kg each side',
+        cues:['Hinge slightly forward, hold for balance','Drive heel back AND up, not just up','Squeeze 1s at top'], alt:'Donkey kicks (bodyweight)' },
+      { name:'Hanging Knee Raise (or Reverse Crunch)', muscle:'Lower Abs', sets:'3 × 12', cal:30, pose:'legRaise', startWeight:'Bodyweight — sub reverse crunch if grip fails',
+        cues:['Knees to chest, curl pelvis under','No swinging','If grip fails, do reverse crunch on floor'], alt:'Lying reverse crunch' },
+    ]},
+    7: { name:'Active Recovery · Rest', icon:'leaf', summary:'Sunday: no gym. 30-min walk + full Physio module + nerve flossing.', isRest:true, exercises: [
+      { name:'30-Minute Brisk Walk', muscle:'Cardio · Joint Health', sets:'1 × 30 min', cal:150, pose:'walk', startWeight:'—',
+        cues:['Outdoors if possible — sunlight + steps','Brisk pace: can talk but not sing','Counts toward your 10k steps'], alt:'Light cycling (no intensity)' },
+      { name:'Full Physio Module', muscle:'Cervical · Shoulders · Nerves', sets:'Complete', cal:40, pose:'nerveFloss', startWeight:'—',
+        cues:['Open the Physio tab','Do every block once','Slow + controlled'], alt:'Yin yoga session (30 min)' },
+      { name:'Deep Breathing + Stretch', muscle:'Vagal Tone · Stress', sets:'10 min', cal:15, pose:'plank', startWeight:'—',
+        cues:['Box breathing: 4 in · 4 hold · 4 out · 4 hold','Helpful for cravings too','Calms nervous system — anti-tremor'], alt:'Guided meditation app' },
+    ]},
+  },
+
+  /* ARPIT DIET — 3 meals/day, ~2400 kcal, ~130g+ protein */
+  diet: {
+    1: { label:'Monday', isCheatDay:false, targetCal:2400,
+      note:'Push A day. Big breakfast right after gym is the money meal.',
+      meals: [
+        { meal:'Breakfast', time:'7:30 AM', loc:'Home · Heavy post-workout', icon:'sun', color:'amber',
+          name:'Oats + Paneer Power Bowl',
+          ingredients:['60g rolled oats in 300ml milk','1 scoop whey stirred in','1 tbsp peanut butter','1 banana + 8 almonds','75g paneer scrambled (side)'],
+          cal:850, protein:50, carbs:90, fat:25, fiber:10 },
+        { meal:'Lunch', time:'1:30 PM', loc:'Office · Tupperware', icon:'briefcase', color:'amber',
+          name:'Rajma Brown Rice Bowl',
+          ingredients:['1.5 cups rajma curry','1.5 cups brown rice','150g curd (separate box)','Big cucumber-tomato salad'],
+          cal:800, protein:40, carbs:115, fat:15, fiber:18 },
+        { meal:'Dinner', time:'9:00 PM', loc:'Home', icon:'moon', color:'sky-400',
+          name:'Paneer Bhurji Thali',
+          ingredients:['100g paneer bhurji','3 whole-wheat rotis','Bhindi/lauki sabzi','Small dal + salad'],
+          cal:750, protein:42, carbs:85, fat:22, fiber:12 },
+      ]
+    },
+    2: { label:'Tuesday', isCheatDay:false, targetCal:2400,
+      note:'Pull A day. Chickpeas + dal push iron and protein.',
+      meals: [
+        { meal:'Breakfast', time:'7:30 AM', loc:'Home · Heavy post-workout', icon:'sun', color:'amber',
+          name:'Veg Poha + Paneer + Shake',
+          ingredients:['1 big plate veg poha (100g dry poha)','15g peanuts in poha','100g pan-fried paneer cubes','1 scoop whey in 250ml milk','1 banana'],
+          cal:850, protein:52, carbs:88, fat:25, fiber:8 },
+        { meal:'Lunch', time:'1:30 PM', loc:'Office · Tupperware', icon:'briefcase', color:'amber',
+          name:'Chole + Rice + Roti',
+          ingredients:['1.5 cups chole (chickpea curry)','1 cup brown rice','1 roti','100g curd'],
+          cal:800, protein:45, carbs:110, fat:15, fiber:20 },
+        { meal:'Dinner', time:'9:00 PM', loc:'Home', icon:'moon', color:'sky-400',
+          name:'Soya Keema + Roti + Dal',
+          ingredients:['100g soya chunks (dry) cooked as keema','3 rotis','1 bowl dal','Cucumber-onion salad'],
+          cal:750, protein:45, carbs:90, fat:18, fiber:15 },
+      ]
+    },
+    3: { label:'Wednesday', isCheatDay:false, targetCal:2430,
+      note:'Legs A day — highest carb need. Khichdi + paneer is the fuel.',
+      meals: [
+        { meal:'Breakfast', time:'7:30 AM', loc:'Home · Heavy post-workout', icon:'sun', color:'amber',
+          name:'Paneer Besan Chilla Stack',
+          ingredients:['3 besan chillas (75g besan)','100g paneer stuffing','100g curd + mint chutney','1 scoop whey in 250ml milk'],
+          cal:900, protein:60, carbs:65, fat:30, fiber:10 },
+        { meal:'Lunch', time:'1:30 PM', loc:'Office · Tupperware', icon:'briefcase', color:'amber',
+          name:'Dal Khichdi + Paneer',
+          ingredients:['1.5 cups moong dal khichdi (with veg)','1 tsp ghee','100g paneer cubes on side','100g curd'],
+          cal:780, protein:45, carbs:90, fat:22, fiber:10 },
+        { meal:'Dinner', time:'9:00 PM', loc:'Home', icon:'moon', color:'sky-400',
+          name:'Tofu Stir-Fry + Roti',
+          ingredients:['200g firm tofu cubes','Mixed bell peppers + broccoli','2 rotis','1 bowl dal'],
+          cal:700, protein:45, carbs:80, fat:20, fiber:12 },
+      ]
+    },
+    4: { label:'Thursday', isCheatDay:false, targetCal:2400,
+      note:'Push B (shoulders). Paneer paratha is dense fuel before a long office day.',
+      meals: [
+        { meal:'Breakfast', time:'7:30 AM', loc:'Home · Heavy post-workout', icon:'sun', color:'amber',
+          name:'Paneer Paratha + Shake',
+          ingredients:['2 paneer parathas (100g paneer total)','100g curd','1 scoop whey in 200ml milk','Small mango pickle'],
+          cal:900, protein:55, carbs:90, fat:30, fiber:8 },
+        { meal:'Lunch', time:'1:30 PM', loc:'Office · Tupperware', icon:'briefcase', color:'amber',
+          name:'Mixed Dal + Jeera Rice + Paneer',
+          ingredients:['1.5 cups mixed dal (toor + chana)','1.5 cups jeera brown rice','100g paneer bhurji','Salad'],
+          cal:800, protein:45, carbs:105, fat:18, fiber:14 },
+        { meal:'Dinner', time:'9:00 PM', loc:'Home', icon:'moon', color:'sky-400',
+          name:'Rajma + Roti + Sabzi',
+          ingredients:['1.5 cups rajma curry','2 rotis','1 bowl mixed sabzi','100g curd'],
+          cal:700, protein:35, carbs:90, fat:15, fiber:16 },
+      ]
+    },
+    5: { label:'Friday', isCheatDay:false, targetCal:2400,
+      note:'Pull B. Overnight oats save you time on a busy end-of-week.',
+      meals: [
+        { meal:'Breakfast', time:'7:30 AM', loc:'Home · Heavy post-workout', icon:'sun', color:'amber',
+          name:'Overnight Oats + Paneer Side',
+          ingredients:['60g oats overnight in 250ml milk','1 tbsp chia + 1 tbsp PB','1 scoop whey mixed in','Berries topping','75g paneer cubes side'],
+          cal:850, protein:55, carbs:80, fat:28, fiber:12 },
+        { meal:'Lunch', time:'1:30 PM', loc:'Office · Tupperware', icon:'briefcase', color:'amber',
+          name:'Veg Pulao + Paneer Tikka + Raita',
+          ingredients:['1.5 cups mixed veg pulao (brown rice)','100g paneer tikka chunks','100g raita','Salad'],
+          cal:800, protein:42, carbs:100, fat:22, fiber:10 },
+        { meal:'Dinner', time:'9:00 PM', loc:'Home', icon:'moon', color:'sky-400',
+          name:'Mushroom Matar Curry + Roti',
+          ingredients:['1 big bowl mushroom-green peas curry','3 rotis','1 bowl dal','Cucumber salad'],
+          cal:750, protein:38, carbs:95, fat:22, fiber:12 },
+      ]
+    },
+    6: { label:'Saturday', isCheatDay:false, targetCal:2450,
+      note:'Legs B. Office closed — lunch is a home thali.',
+      meals: [
+        { meal:'Breakfast', time:'7:30 AM', loc:'Home · Heavy post-workout', icon:'sun', color:'amber',
+          name:'Veg Upma + Paneer + Shake',
+          ingredients:['1 big plate veg upma with peanuts','75g paneer side','1 scoop whey in 250ml milk'],
+          cal:900, protein:55, carbs:90, fat:25, fiber:8 },
+        { meal:'Lunch', time:'1:30 PM', loc:'Home · Weekend thali', icon:'home', color:'amber',
+          name:'Paneer Tikka Thali',
+          ingredients:['100g grilled paneer tikka','3 rotis','1 bowl dal','1 bowl mixed sabzi','100g raita + salad'],
+          cal:850, protein:50, carbs:100, fat:22, fiber:14 },
+        { meal:'Dinner', time:'9:00 PM', loc:'Home', icon:'moon', color:'sky-400',
+          name:'Dal Makhani + Roti',
+          ingredients:['1 bowl dal makhani','3 rotis','1 small sabzi','Cucumber-onion salad'],
+          cal:700, protein:30, carbs:85, fat:25, fiber:12 },
+      ]
+    },
+    7: { label:'Sunday', isCheatDay:true, targetCal:2650,
+      note:'Rest day. Sleep in. ONE cheat meal — enjoy it guilt-free. Dinner has your protein baseline built in.',
+      meals: [
+        { meal:'Breakfast', time:'10:00 AM', loc:'Home · Leisurely', icon:'sun', color:'amber',
+          name:'Aloo Paratha + Curd + Fruit',
+          ingredients:['2 aloo parathas (medium)','150g curd','1 fruit','Pickle side'],
+          cal:700, protein:20, carbs:85, fat:30, fiber:10 },
+        { meal:'Cheat Lunch', time:'1:30 PM', loc:'Eat out / Home indulgence', icon:'party-popper', color:'crimson',
+          name:'Designated Cheat — Choose One',
+          ingredients:['Option A: Chole Bhature + sweet lassi','Option B: Pav Bhaji + masala chai','Option C: 2 slices veg pizza + fries','Option D: Masala dosa + sambar + filter coffee'],
+          cal:1100, protein:30, carbs:130, fat:45, fiber:8 },
+        { meal:'Dinner', time:'9:00 PM', loc:'Home · Protein baseline BUILT IN', icon:'shield-check', color:'emerald',
+          name:'Whey Shake + Paneer Curd Rice',
+          ingredients:['1 scoop whey in 250ml milk (drink first)','1 cup curd rice with tadka','75g paneer cubes on side','Small bowl dal + salad'],
+          cal:850, protein:60, carbs:90, fat:25, fiber:6 },
+      ]
+    },
+  },
+
+  /* ARPIT PHYSIO (unchanged from v2 — this stuff was perfect) */
+  physio: [
+    { title:'Pre-Workout Warm-up (5 min)', sub:'BEFORE every session. Non-negotiable.', icon:'flame', color:'emerald', items:[
+      { name:'Chin Tucks', reps:'2 × 10 (3s hold)', pose:'chinTuck', why:'Strengthens deep neck flexors. THE #1 exercise for forward-head posture and cervical pain.' },
+      { name:'Neck Side Bends (Gentle)', reps:'5 each side', pose:'chinTuck', why:'Decompresses cervical facets. Stop before any pinching.' },
+      { name:'Shoulder Rolls', reps:'10 forward + 10 back', pose:'shrug', why:'Mobilises sticky shoulder capsules. Slow and deliberate.' },
+      { name:'Band Pull-Apart', reps:'2 × 15', pose:'bandPullApart', why:'Activates rear delts + scapular retractors before pressing.' },
+      { name:'Cat–Cow', reps:'10 reps', pose:'catCow', why:'Warms thoracic + lumbar spine, preps hinge patterns.' },
+    ]},
+    { title:'Left/Right Hand Balance Protocol', sub:'Restore symmetry. Lead with the weaker side.', icon:'hand', color:'amber', items:[
+      { name:'Unilateral Lead Rule', reps:'Every set', pose:'bicepCurl', why:'Always start each unilateral exercise with your LEFT hand. Right only matches what left achieves — prevents widening the gap.' },
+      { name:'Extra Left-Hand Set', reps:'1 bonus set on press/curl days', pose:'hammerCurl', why:'One extra set on the LEFT at the end of any unilateral movement — actively closes the gap.' },
+      { name:'Cross-Body Reach', reps:'10 each, slow', pose:'frontRaise', why:'Improves coordination across the corpus callosum. Helps mild tremor.' },
+    ]},
+    { title:'Grip & Forearm Strengthening', sub:'Address occasional right-hand grip weakness.', icon:'grip', color:'emerald', items:[
+      { name:'Towel-Wrap Dead Hang', reps:'3 × 20s', pose:'grip', why:'Thicker grip → faster crushing-strength gains.' },
+      { name:'Plate Pinch', reps:'3 × 20s', pose:'grip', why:'Pinch two 2.5kg plates with fingertips. Great thumb + finger strength.' },
+      { name:'Wrist Curls (DB)', reps:'3 × 15 each direction', pose:'wrist', why:'Light DB, forearm on bench, flex + extend the wrist. Balances flexors + extensors.' },
+      { name:'Stress Ball Squeeze', reps:'3 × 30 reps each hand, anytime', pose:'grip', why:'Use during the day. Volume accumulates. Fixes grip endurance.' },
+      { name:'Rubber-Band Finger Extensions', reps:'3 × 20', pose:'wrist', why:'Opens fingers against a band — balances all the closing-grip you do all day.' },
+    ]},
+    { title:'Nerve Flossing (Daily)', sub:'Especially important given alcohol-induced nerve issues.', icon:'waves', color:'sky-400', items:[
+      { name:'Median Nerve Glide', reps:'10 slow reps each arm', pose:'nerveFloss', why:'Arm out, palm up, fingers back; tilt head AWAY. Helps thumb-index-middle tingling.' },
+      { name:'Ulnar Nerve Glide', reps:'10 slow reps each arm', pose:'nerveFloss', why:'Hand into "OK" sign, bring to face like a monocle. Helps ring + pinky tingling.' },
+      { name:'Radial Nerve Glide', reps:'10 slow reps each arm', pose:'nerveFloss', why:'Arm down, thumb in fist, tilt wrist down, head opposite. Back-of-hand symptoms.' },
+      { name:'Slump Test Glide (Cervical-friendly)', reps:'8 slow reps', pose:'plank', why:'Sit tall, GENTLY slump shoulders forward, extend one knee, tuck chin then release. Mobilises the whole neural chain.' },
+    ]},
+    { title:'Cervical Care Cool-down', sub:'AFTER every session. Brings the neck back down.', icon:'moon', color:'sky-400', items:[
+      { name:'Upper Trap Stretch', reps:'30s each side', pose:'shrug', why:'Hand behind back, gently pull head to opposite side. Releases the muscle that grips your neck all day.' },
+      { name:'Levator Scapulae Stretch', reps:'30s each side', pose:'shrug', why:'Look down toward armpit, gentle hand pressure. Targets the classic cervical-knot muscle.' },
+      { name:'Doorway Pec Stretch', reps:'30s each arm', pose:'cableFly', why:'Tight pecs PULL shoulders forward and worsen the neck. Open them up daily.' },
+      { name:'Child\'s Pose', reps:'60s', pose:'plank', why:'Decompresses the spine end-to-end. Simple reset.' },
+    ]},
+    { title:'Anti-Tremor & Nerve Health Habits', sub:'Lifestyle work outside the gym.', icon:'shield-check', color:'amber', items:[
+      { name:'B-Complex (esp. B1/B12)', reps:'Discuss with doctor', pose:'shrug', why:'Alcohol depletes B vitamins, which are essential for nerve myelin. A supplement is often warranted — confirm with your physician.' },
+      { name:'Hydration ≥ 3L/day', reps:'Daily', pose:'shrug', why:'Dehydration worsens both tremors and nerve symptoms. Track via Dashboard.' },
+      { name:'Stable Blood Sugar', reps:'Eat protein every 4–5h', pose:'shrug', why:'Low blood sugar triggers tremors. 3-meal spacing handles this — do not skip meals.' },
+      { name:'Sleep 7+ hours', reps:'Lights off by 10:30 PM', pose:'shrug', why:'Nerves heal during sleep. Non-negotiable for nerve regeneration — and you have a 5:30 AM wake.' },
+      { name:'Smoking Reduction Plan', reps:'Track on Dashboard', pose:'shrug', why:'Nicotine constricts blood vessels and worsens nerve recovery. Every smoke-free day matters.' },
+    ]},
+  ],
+},
+
+/* ---------------- HARSHITA ---------------- */
+harshita: {
+  name: 'Harshita', age: 28, height: `5'1"`, weight: 71, goal: 'Fat loss + athletic (target ~11 kg in 4 months)',
+  color: 'rose', accent: '#f43f5e', icon: 'user',
+  targets: { cal: 1400, protein: 125, steps: 10000, water: 8, restCal: 1600 },
+  mathRows: [
+    ['BMR (Mifflin-St Jeor, est.)', '~1,380 kcal'],
+    ['TDEE (light activity + steps)', '~1,950 kcal'],
+    ['Target intake Mon–Sat', '~1,400 kcal', 'text-emerald'],
+    ['Sunday (relaxed)', '~1,600 kcal', 'text-amber'],
+    ['Protein floor (~1.7 g/kg)', '120–130 g', 'text-emerald'],
+    ['Honest weekly loss', '0.6–0.8 kg', 'text-emerald'],
+    ['Realistic 4-month total', '10–12 kg (14–16 is only possible with perfect adherence + more cardio)', 'text-amber'],
+  ],
+  checklist: [
+    { id:'steps',    label:'10k steps completed',        icon:'footprints' },
+    { id:'water',    label:'3L water done',              icon:'droplet' },
+    { id:'protein',  label:'Hit 120g+ protein',           icon:'egg' },
+    { id:'nosnack',  label:'No unplanned snacking',      icon:'ban' },
+    { id:'sleep',    label:'7+ hrs sleep last night',     icon:'moon' },
+    { id:'mobility', label:'Posture / mobility done',    icon:'activity' },
+  ],
+  pantryIntro: 'Same-cook adaptations — portion-controlled + more veg',
+  pantry: [
+    ['Paneer','18g pro / 100g'],['Tofu','12g pro / 100g'],['Greek curd (hung)','12g pro / 100g'],
+    ['Soya chunks','52g pro / 100g'],['Whey isolate','25g pro / scoop'],['Egg whites (if you choose)','11g pro / 100g'],
+    ['Big salad daily','fibre + fullness'],['Cook oil cap','≤ 2 tsp / meal'],
+  ],
+  workoutHero: {
+    title: 'Fat-Loss + Athletic Split',
+    subtitle: '3 × Full Body Strength · 3 × Cardio · 1 Rest',
+    blurb: 'Strength on Mon/Wed/Fri preserves muscle while you cut. Brisk walks on Tue/Thu/Sat drive the deficit. Sunday rest — do NOT train 7 days a week.',
+    icon: 'sparkles',
+  },
+  workoutSafety: `<i data-lucide="alert-triangle" class="w-5 h-5 text-amber flex-shrink-0 mt-0.5"></i>
+    <div class="text-xs text-ink-200 leading-relaxed">
+      <strong class="text-amber">The trap:</strong> Doing only cardio will make you smaller but soft. Doing only strength won't create the deficit. You need BOTH — that's what builds "athletic" instead of "skinny".
+      <br/><br/><strong class="text-rose">Progression rule:</strong> Same as Arpit — when you complete every set with 2 reps in reserve for 2 sessions in a row, add 2.5 kg (or the smallest jump the machine allows).
+    </div>`,
+  physioHero: {
+    subtitle: 'Posture · Mobility · Recovery',
+    title: 'Mobility & Recovery',
+    blurb: 'Short daily posture reset. Hip mobility 3× a week. This is what makes strength training feel good.',
+    icon: 'activity', color: 'rose',
+  },
+  physioSafety: `<i data-lucide="shield-check" class="w-5 h-5 text-emerald flex-shrink-0 mt-0.5"></i>
+    <div class="text-xs text-ink-200 leading-relaxed">
+      <strong class="text-emerald">Weigh-in rule:</strong> Weigh yourself ONCE a week (same day, morning, empty bladder). Daily fluctuations of 1–2 kg are normal water shifts — they will discourage you for no reason. Trust the weekly average, not the daily number.
+    </div>`,
+
+  workouts: {
+    1: { name:'Full Body A · Strength', icon:'dumbbell', summary:'Compound lifts, low reps, real weight. This day builds shape.', isRest:false, exercises: [
+      { name:'Goblet Squat', muscle:'Quads · Glutes · Core', sets:'3 × 10', cal:60, pose:'gobletSquat', startWeight:'5 kg DB (progress to 8–10 kg by week 4)',
+        cues:['Hold DB at chest, elbows tucked','Feet shoulder-width, toes slightly out','Sit DOWN (not back), knees track toes','Chest up throughout'], alt:'Bodyweight squat (weeks 1–2 if needed)' },
+      { name:'DB Romanian Deadlift', muscle:'Hamstrings · Glutes', sets:'3 × 10', cal:50, pose:'rdl', startWeight:'5 kg each hand',
+        cues:['DBs in front of thighs, soft knees','Push HIPS back (not squat)','Feel stretch in hamstrings, then squeeze glutes','Neutral spine — do not round'], alt:'Cable pull-through' },
+      { name:'Machine Chest Press', muscle:'Chest · Triceps · Shoulders', sets:'3 × 10', cal:40, pose:'machineChestPress', startWeight:'15 kg (pin selector)',
+        cues:['Handles at mid-chest','Full extension without locking elbows','Slow control on the way back'], alt:'Knee push-ups (3 × as many as possible)' },
+      { name:'Lat Pulldown (Wide Neutral)', muscle:'Back Width · Biceps', sets:'3 × 10', cal:40, pose:'latPulldown', startWeight:'15–20 kg (pin selector)',
+        cues:['Wide grip, slight backward lean','Pull to upper chest, elbows drive down','Squeeze back at bottom, control return'], alt:'Assisted pull-up machine' },
+      { name:'Plank', muscle:'Core', sets:'3 × 20s', cal:15, pose:'plank', startWeight:'Bodyweight',
+        cues:['Straight line — no sagging hips','Squeeze glutes and abs','Breathe normally through it'], alt:'Knee plank (3 × 30s)' },
+    ]},
+    2: { name:'Cardio + Core', icon:'footprints', summary:'45-min brisk walk + core circuit. Move for the deficit.', isRest:false, exercises: [
+      { name:'Brisk Walk (Outdoor or Treadmill)', muscle:'Cardio · Fat Loss', sets:'1 × 45 min', cal:200, pose:'walk', startWeight:'—',
+        cues:['Pace: 5.5–6 km/hr — you can talk but not sing','Podcast / music helps consistency','Outdoors > treadmill when possible'], alt:'Elliptical or cycling 45 min' },
+      { name:'Dead Bug', muscle:'Deep Core', sets:'3 × 10 each side', cal:15, pose:'deadBug', startWeight:'Bodyweight',
+        cues:['Lower back PRESSED to floor throughout','Opposite arm + leg extend slowly','Return controlled, then switch'], alt:'Marching bridge' },
+      { name:'Glute Bridge', muscle:'Glutes · Hamstrings', sets:'3 × 15', cal:20, pose:'gluteBridge', startWeight:'Bodyweight',
+        cues:['Feet flat, knees bent 90°','Drive hips UP by squeezing glutes','Hold 1s at top, control down'], alt:'Single-leg bridge (harder)' },
+      { name:'Bird Dog', muscle:'Core · Balance', sets:'3 × 10 each side', cal:15, pose:'birdDog', startWeight:'Bodyweight',
+        cues:['On all fours, back flat','Opposite arm + leg extend slowly','Squeeze core to stay stable, no wobbling'], alt:'Kneeling superman' },
+    ]},
+    3: { name:'Full Body B · Hypertrophy', icon:'dumbbell', summary:'Slightly higher reps. This day builds visible tone.', isRest:false, exercises: [
+      { name:'Leg Press', muscle:'Quads · Glutes', sets:'3 × 12', cal:65, pose:'legPress', startWeight:'30 kg (sled weight — start light)',
+        cues:['Feet shoulder-width on platform','Lower back stays glued to seat','Knees track toes, do not lock at top'], alt:'DB step-ups on a low bench (3 × 10 each)' },
+      { name:'Seated Cable Row', muscle:'Back · Biceps', sets:'3 × 12', cal:45, pose:'cableRow', startWeight:'15 kg (pin selector)',
+        cues:['Chest tall, small backward lean only','Pull handle to belly button','Squeeze shoulder blades together 1s'], alt:'DB single-arm row' },
+      { name:'Seated DB Shoulder Press', muscle:'Shoulders', sets:'3 × 10', cal:40, pose:'machineShoulder', startWeight:'3–4 kg each hand',
+        cues:['Bench upright, back supported','DBs start at shoulder height','Press up without shrugging, control down'], alt:'Machine shoulder press' },
+      { name:'DB Bicep Curl → Tricep Kickback (Superset)', muscle:'Arms', sets:'3 × 10 each', cal:30, pose:'bicepCurl', startWeight:'3–4 kg each hand',
+        cues:['Curls first, then kickbacks — one after the other','Elbows pinned for both','Slow tempo — do not swing'], alt:'Cable curl + cable pushdown' },
+      { name:'Bird Dog', muscle:'Core · Balance', sets:'3 × 10 each', cal:15, pose:'birdDog', startWeight:'Bodyweight',
+        cues:['Slow and controlled','Opposite arm + leg together','No wobbling — quality over speed'], alt:'Plank hold 30s' },
+    ]},
+    4: { name:'Cardio + Mobility', icon:'footprints', summary:'45-min brisk walk + 20-min full-body stretch.', isRest:false, exercises: [
+      { name:'Brisk Walk', muscle:'Cardio · Fat Loss', sets:'1 × 45 min', cal:200, pose:'walk', startWeight:'—',
+        cues:['Same pace as Tuesday','Try to walk after lunch for glucose control','Aim for outdoor 3 of the 3 walk days'], alt:'Elliptical or cycling 45 min' },
+      { name:'Hip Flexor Stretch', muscle:'Hips · Posture', sets:'2 × 30s each', cal:5, pose:'hipStretch', startWeight:'—',
+        cues:['Kneeling lunge position','Tuck pelvis under, squeeze back-leg glute','Feel stretch at front of hip'], alt:'Standing quad stretch' },
+      { name:'Cat–Cow', muscle:'Spine Mobility', sets:'2 × 10', cal:5, pose:'catCow', startWeight:'—',
+        cues:['On all fours, alternate arch and round','Slow — one breath per rep','Feel the spine wake up'], alt:'Seated spinal twist' },
+      { name:'Doorway Pec Stretch', muscle:'Chest · Posture', sets:'2 × 30s each arm', cal:5, pose:'cableFly', startWeight:'—',
+        cues:['Arm on doorframe, step forward','Feel stretch across chest','Fixes rounded-shoulder posture'], alt:'Wall pec stretch' },
+    ]},
+    5: { name:'Full Body C · Metabolic Circuit', icon:'zap', summary:'3 circuit rounds + short cardio finisher. Burns hardest, feels amazing after.', isRest:false, exercises: [
+      { name:'Circuit — Goblet Squat', muscle:'Legs (in circuit)', sets:'3 rounds × 10', cal:40, pose:'gobletSquat', startWeight:'5 kg DB',
+        cues:['Part of a 5-move circuit — do all 5, then rest 90s, repeat','Move steadily but keep good form','Water sip between rounds'], alt:'Bodyweight squats × 15' },
+      { name:'Circuit — Knee Push-Up', muscle:'Chest · Triceps', sets:'3 rounds × 10', cal:30, pose:'pushup', startWeight:'Bodyweight (knees)',
+        cues:['Knees on floor, straight line from knees to head','Chest to floor, press back up','Progress to full push-ups over time'], alt:'Wall push-ups × 15' },
+      { name:'Circuit — DB Row (Each Side)', muscle:'Back · Biceps', sets:'3 rounds × 10', cal:35, pose:'dbRow', startWeight:'5 kg each side',
+        cues:['Hinge forward, back flat','Pull DB to hip, elbow close to body','Both sides count as one set'], alt:'Resistance band row × 15' },
+      { name:'Circuit — Glute Bridge', muscle:'Glutes · Hamstrings', sets:'3 rounds × 15', cal:25, pose:'gluteBridge', startWeight:'Bodyweight',
+        cues:['Drive hips up hard','Squeeze glutes 1s at top','Control on the way down'], alt:'Wall sit 30s' },
+      { name:'Circuit — Plank', muscle:'Core', sets:'3 rounds × 30s', cal:15, pose:'plank', startWeight:'Bodyweight',
+        cues:['Last move of the circuit','Straight line — no sagging','Breathe through it'], alt:'Knee plank 45s' },
+      { name:'Finisher: 20-min Steady Cardio', muscle:'Fat Loss', sets:'20 min', cal:120, pose:'walk', startWeight:'—',
+        cues:['Anything you enjoy — walk, cycle, dance, elliptical','Moderate intensity — sustainable','Recover from the circuit'], alt:'Skip if very tired — do 10 min instead' },
+    ]},
+    6: { name:'Long Walk', icon:'footprints', summary:'60-min outdoor walk + light stretch. Recovery + calorie burn.', isRest:false, exercises: [
+      { name:'60-Min Outdoor Walk', muscle:'Cardio · Recovery · Mental Health', sets:'1 × 60 min', cal:280, pose:'walk', startWeight:'—',
+        cues:['Outdoors ideal — park, market, wherever','Podcast, audiobook, or with a friend','Steady pace — this is a recovery day, not a race'], alt:'Split into 2 × 30-min walks' },
+      { name:'Full-Body Stretch', muscle:'Mobility · Recovery', sets:'15 min', cal:15, pose:'yoga', startWeight:'—',
+        cues:['Hit hamstrings, hips, chest, shoulders, back','Hold each 30s, breathe deep','After the walk, when muscles are warm'], alt:'Guided YouTube stretch video' },
+    ]},
+    7: { name:'Rest / Optional Yoga', icon:'leaf', summary:'True rest day. Sleep in. Optional 20-min gentle yoga.', isRest:true, exercises: [
+      { name:'Complete Rest', muscle:'Recovery', sets:'—', cal:0, pose:'moon', startWeight:'—',
+        cues:['NO training today. Recovery is when adaptation happens','Sleep in, cook nice food, walk if you want but no target','Weight loss happens during recovery, not during training'], alt:'—' },
+      { name:'Optional: Gentle Yoga (20 min)', muscle:'Mobility · Stress Relief', sets:'20 min', cal:60, pose:'yoga', startWeight:'—',
+        cues:['ONLY if you feel like it — no pressure','YouTube beginner yoga videos are perfect','Focus on breathing, not intensity'], alt:'Skip entirely — read a book instead' },
+    ]},
+  },
+
+  /* HARSHITA DIET — 3 meals/day, ~1400 kcal, ~125g protein */
+  diet: {
+    1: { label:'Monday', isCheatDay:false, targetCal:1400,
+      note:'Strength day. Protein high — this preserves muscle while you cut.',
+      meals: [
+        { meal:'Breakfast', time:'8:00 AM', loc:'Home', icon:'sun', color:'amber',
+          name:'Paneer Scramble + Veg Oats + Shake',
+          ingredients:['100g paneer scrambled (½ tsp oil only)','30g oats in 200ml skim milk','1 scoop whey mixed in','Handful spinach + tomato in scramble'],
+          cal:450, protein:50, carbs:40, fat:15, fiber:6 },
+        { meal:'Lunch', time:'1:30 PM', loc:'Office · Tupperware', icon:'briefcase', color:'amber',
+          name:'Rajma + Small Rice + Big Salad',
+          ingredients:['1 cup rajma (skim the ghee)','½ cup brown rice','Big cucumber-tomato-carrot salad','100g curd (separate)'],
+          cal:450, protein:25, carbs:60, fat:8, fiber:14 },
+        { meal:'Dinner', time:'8:30 PM', loc:'Home · Early is better', icon:'moon', color:'rose',
+          name:'Paneer Bhurji + 1 Roti + Big Sabzi',
+          ingredients:['100g paneer bhurji (low-oil)','1 roti (not 2)','Big bowl bhindi/lauki','Small salad + 50g curd'],
+          cal:500, protein:50, carbs:35, fat:20, fiber:9 },
+      ]
+    },
+    2: { label:'Tuesday', isCheatDay:false, targetCal:1400,
+      note:'Cardio day. Protein floor still 125g — muscle preservation is priority.',
+      meals: [
+        { meal:'Breakfast', time:'8:00 AM', loc:'Home', icon:'sun', color:'amber',
+          name:'Smaller Poha + Paneer + Shake',
+          ingredients:['½ plate veg poha (50g dry poha)','75g paneer cubes on side','1 scoop whey in 200ml skim milk'],
+          cal:450, protein:45, carbs:40, fat:15, fiber:5 },
+        { meal:'Lunch', time:'1:30 PM', loc:'Office · Tupperware', icon:'briefcase', color:'amber',
+          name:'Chole + 1 Roti + Big Salad',
+          ingredients:['1 cup chole (skim ghee)','1 whole-wheat roti','Big salad — cucumber, tomato, onion, carrot','100g curd'],
+          cal:450, protein:25, carbs:55, fat:10, fiber:14 },
+        { meal:'Dinner', time:'8:30 PM', loc:'Home · Skip the roti', icon:'moon', color:'rose',
+          name:'Soya Keema + Big Salad (no roti)',
+          ingredients:['100g soya chunks cooked as keema','Small bowl dal','Big salad bowl','Handful pumpkin seeds'],
+          cal:500, protein:55, carbs:40, fat:12, fiber:12 },
+      ]
+    },
+    3: { label:'Wednesday', isCheatDay:false, targetCal:1400,
+      note:'Strength day. Chilla is protein-dense and low-calorie — perfect for cutting.',
+      meals: [
+        { meal:'Breakfast', time:'8:00 AM', loc:'Home', icon:'sun', color:'amber',
+          name:'Paneer Chilla + Shake',
+          ingredients:['2 besan chillas (40g besan total)','50g paneer stuffing','100g curd + mint chutney','1 scoop whey in water (drink after)'],
+          cal:450, protein:50, carbs:35, fat:15, fiber:7 },
+        { meal:'Lunch', time:'1:30 PM', loc:'Office · Tupperware', icon:'briefcase', color:'amber',
+          name:'Smaller Dal Khichdi + Paneer',
+          ingredients:['1 cup moong dal khichdi (less rice ratio)','No ghee (or ¼ tsp only)','75g paneer cubes on side','Small salad'],
+          cal:450, protein:30, carbs:55, fat:12, fiber:8 },
+        { meal:'Dinner', time:'8:30 PM', loc:'Home', icon:'moon', color:'rose',
+          name:'Tofu Stir-Fry + Small Roti',
+          ingredients:['150g firm tofu','Big veg stir-fry (bell peppers, broccoli, mushrooms)','1 small roti','Cucumber salad'],
+          cal:500, protein:45, carbs:35, fat:18, fiber:10 },
+      ]
+    },
+    4: { label:'Thursday', isCheatDay:false, targetCal:1400,
+      note:'Cardio day. Half a paratha instead of two — same taste, half the calories.',
+      meals: [
+        { meal:'Breakfast', time:'8:00 AM', loc:'Home', icon:'sun', color:'amber',
+          name:'Half Paneer Paratha + Curd + Shake',
+          ingredients:['1 medium paneer paratha (50g paneer, minimal oil)','100g curd','1 scoop whey in water','Cucumber slices'],
+          cal:450, protein:50, carbs:35, fat:18, fiber:5 },
+        { meal:'Lunch', time:'1:30 PM', loc:'Office · Tupperware', icon:'briefcase', color:'amber',
+          name:'Mixed Dal + Small Rice + Paneer',
+          ingredients:['1 cup mixed dal (toor + chana)','½ cup jeera brown rice','75g paneer bhurji','Big salad'],
+          cal:450, protein:30, carbs:55, fat:12, fiber:10 },
+        { meal:'Dinner', time:'8:30 PM', loc:'Home', icon:'moon', color:'rose',
+          name:'Paneer Sabzi + 1 Roti + Salad',
+          ingredients:['150g paneer in low-oil tomato gravy','1 whole-wheat roti','Big mixed sabzi','100g curd'],
+          cal:500, protein:45, carbs:35, fat:20, fiber:11 },
+      ]
+    },
+    5: { label:'Friday', isCheatDay:false, targetCal:1400,
+      note:'Circuit day. Higher expenditure — enjoy your food.',
+      meals: [
+        { meal:'Breakfast', time:'8:00 AM', loc:'Home', icon:'sun', color:'amber',
+          name:'Overnight Oats + Shake',
+          ingredients:['30g oats soaked overnight in 200ml skim milk','1 tbsp chia seeds','1 scoop whey stirred in','Berries topping'],
+          cal:400, protein:45, carbs:40, fat:10, fiber:8 },
+        { meal:'Lunch', time:'1:30 PM', loc:'Office · Tupperware', icon:'briefcase', color:'amber',
+          name:'Small Pulao + Paneer Tikka + Raita',
+          ingredients:['½ cup veg pulao (brown rice)','100g grilled paneer tikka','100g raita','Salad'],
+          cal:500, protein:35, carbs:45, fat:15, fiber:7 },
+        { meal:'Dinner', time:'8:30 PM', loc:'Home', icon:'moon', color:'rose',
+          name:'Mushroom Matar + Small Dal + Salad',
+          ingredients:['1 bowl mushroom-peas curry','Small bowl dal','Big salad','1 small roti'],
+          cal:500, protein:45, carbs:45, fat:15, fiber:12 },
+      ]
+    },
+    6: { label:'Saturday', isCheatDay:false, targetCal:1400,
+      note:'Long-walk day. Home food all day — control the oil.',
+      meals: [
+        { meal:'Breakfast', time:'8:00 AM', loc:'Home', icon:'sun', color:'amber',
+          name:'Small Upma + Paneer + Shake',
+          ingredients:['1 small plate veg upma with peanuts','50g paneer side','1 scoop whey in water'],
+          cal:450, protein:45, carbs:40, fat:15, fiber:6 },
+        { meal:'Lunch', time:'1:30 PM', loc:'Home · Weekend', icon:'home', color:'amber',
+          name:'Paneer Tikka Salad Bowl',
+          ingredients:['100g grilled paneer tikka','1 roti','Big salad — lettuce, tomato, cucumber, onion, olives','Small dal','100g raita'],
+          cal:500, protein:45, carbs:45, fat:15, fiber:12 },
+        { meal:'Dinner', time:'8:30 PM', loc:'Home', icon:'moon', color:'rose',
+          name:'Dal + Roti + Sabzi + Curd',
+          ingredients:['1 bowl dal','1 whole-wheat roti','Big sabzi','100g curd + salad'],
+          cal:450, protein:35, carbs:55, fat:12, fiber:14 },
+      ]
+    },
+    7: { label:'Sunday', isCheatDay:true, targetCal:1600,
+      note:'Rest day. ONE small cheat — portion-controlled. Dinner has your protein baseline.',
+      meals: [
+        { meal:'Breakfast', time:'10:00 AM', loc:'Home · Leisurely', icon:'sun', color:'amber',
+          name:'Aloo Paratha (1 only) + Paneer Side',
+          ingredients:['1 aloo paratha (medium)','50g paneer cubes on side','100g curd','1 fruit'],
+          cal:500, protein:25, carbs:55, fat:20, fiber:8 },
+        { meal:'Cheat Lunch', time:'1:30 PM', loc:'Portion-controlled cheat', icon:'party-popper', color:'crimson',
+          name:'Small Cheat — Half Portion',
+          ingredients:['Option A: 1 chole bhature (not 2) + small lassi','Option B: Half plate pav bhaji + chai','Option C: 1 slice veg pizza + big side salad','Option D: 1 masala dosa (not the jumbo)'],
+          cal:600, protein:20, carbs:75, fat:22, fiber:6 },
+        { meal:'Dinner', time:'8:30 PM', loc:'Home · Protein baseline', icon:'shield-check', color:'emerald',
+          name:'Whey Shake + Paneer Curd Bowl',
+          ingredients:['1 scoop whey in milk (drink first)','100g paneer cubes','Small bowl curd rice','Big cucumber salad'],
+          cal:500, protein:55, carbs:40, fat:18, fiber:5 },
+      ]
+    },
+  },
+
+  /* HARSHITA PHYSIO — general mobility, posture, recovery */
+  physio: [
+    { title:'Daily Posture Reset (5 min)', sub:'For sedentary hours. Fixes forward-head + rounded shoulders.', icon:'rotate-3d', color:'rose', items:[
+      { name:'Chin Tucks', reps:'2 × 10 (3s hold)', pose:'chinTuck', why:'Strengthens deep neck flexors. The single best fix for tech-neck from phone/laptop use.' },
+      { name:'Wall Angel', reps:'2 × 10', pose:'wallAngel', why:'Back against wall, slide arms up like a snow angel. Opens the chest, activates the upper back.' },
+      { name:'Doorway Pec Stretch', reps:'30s each arm', pose:'cableFly', why:'Tight pecs pull shoulders forward. Open them up — this alone improves posture.' },
+      { name:'Cat–Cow', reps:'10 reps', pose:'catCow', why:'Wakes up the spine. Great morning move.' },
+    ]},
+    { title:'Hip Mobility (3× per week)', sub:'Critical when sitting all day. Improves squat depth too.', icon:'activity', color:'emerald', items:[
+      { name:'Kneeling Hip Flexor Stretch', reps:'30s each side', pose:'hipStretch', why:'Sitting shortens hip flexors, which pulls the lower back forward and creates pain. This is the antidote.' },
+      { name:'90/90 Hip Stretch', reps:'30s each side', pose:'hipStretch', why:'Sit with both legs bent at 90° — front leg out, back leg to the side. Opens internal + external rotation.' },
+      { name:'Deep Squat Hold', reps:'60s', pose:'gobletSquat', why:'Hold the bottom of a bodyweight squat. Restores full squat range. Hold onto something for balance if needed.' },
+      { name:'Glute Bridge (Bodyweight)', reps:'2 × 15', pose:'gluteBridge', why:'Wakes up sleeping glutes. Sedentary life makes glutes forget how to fire.' },
+    ]},
+    { title:'Core Stability (2× per week)', sub:'The core work that actually matters — no crunches.', icon:'target', color:'amber', items:[
+      { name:'Dead Bug', reps:'3 × 10 each side', pose:'deadBug', why:'Trains anti-extension — keeping the lower back flat during limb movement. The core skill that protects your back in squats and RDLs.' },
+      { name:'Bird Dog', reps:'3 × 10 each side', pose:'birdDog', why:'Trains anti-rotation — keeping the trunk stable while limbs move. Builds control, not just endurance.' },
+      { name:'Side Plank (Knee Version First)', reps:'20s each side', pose:'sidePlank', why:'Hits the obliques and QL — muscles that support the spine from the side. Start on your knees, progress to feet.' },
+    ]},
+    { title:'Ankle & Calf Care', sub:'Support all those walking days.', icon:'footprints', color:'sky-400', items:[
+      { name:'Calf Stretch (Wall)', reps:'30s each leg', pose:'calf', why:'Hands on wall, one leg back, heel pressed down. Tight calves cause knee and lower-back issues.' },
+      { name:'Ankle Circles', reps:'10 each direction, each foot', pose:'wrist', why:'Restores ankle mobility. Better ankles = deeper squats + fewer trips + fewer sprains.' },
+      { name:'Heel Raise + Toe Raise', reps:'2 × 15 of each', pose:'calf', why:'Strengthens both sides of the lower leg — supports walking volume and prevents shin splints.' },
+    ]},
+    { title:'Recovery Habits', sub:'Fat loss happens in recovery, not just in training.', icon:'shield-check', color:'emerald', items:[
+      { name:'Hydration 3L/day', reps:'Daily', pose:'shrug', why:'Adequate water helps hunger cues, keeps metabolism ticking, and reduces the "water weight" swings that mess with your head.' },
+      { name:'Sleep 7+ hours', reps:'Lights off by 10:30 PM', pose:'shrug', why:'Poor sleep spikes hunger hormones (ghrelin) and drops satiety hormones (leptin). One bad-sleep week undoes a good-eating week.' },
+      { name:'Weigh-in ONCE a week', reps:'Same day, morning, empty bladder', pose:'shrug', why:'Daily weighing = daily discouragement. Water shifts of 1–2 kg are normal and meaningless. Trust the weekly average.' },
+      { name:'Waist Measurement Monthly', reps:'1× per month', pose:'shrug', why:'The scale lies when you\'re gaining muscle + losing fat. Waist measurement tells the truth. Take it at the navel.' },
+      { name:'Whey Shake as Insurance', reps:'When a meal is skipped', pose:'shrug', why:'If you miss a meal, drink a whey shake. Missing calories is fine; missing protein is not. Protein floor is what preserves muscle on a cut.' },
+    ]},
+  ],
+},
+
+}; /* end PROFILES */
+
+/* ---------- 4. STATE ---------- */
+const STORAGE_KEY = 'aestheticfit-v3';
+
+function freshDay(profileKey) {
+  const p = PROFILES[profileKey];
+  return {
+    steps: 0,
+    water: 0,
+    mealsDone: {},
+    workoutDone: {},
+    checklist: Object.fromEntries(p.checklist.map(c => [c.id, false])),
+  };
+}
+function freshProfileState(profileKey) {
+  const td = todayDow();
+  const days = {};
+  for (let i = 1; i <= 7; i++) days[i] = freshDay(profileKey);
+  return { days, selectedDietDay: td, selectedWorkoutDay: td, physioDone: {} };
+}
+function freshState() {
+  return {
+    weekStart: getWeekStart(),
+    activeProfile: 'arpit',
+    profiles: {
+      arpit: freshProfileState('arpit'),
+      harshita: freshProfileState('harshita'),
+    },
+  };
+}
+function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    try {
+      const s = JSON.parse(raw);
+      if (s.weekStart !== getWeekStart()) return freshState();
+      // Defensive: ensure both profiles + all day slots exist
+      if (!s.activeProfile) s.activeProfile = 'arpit';
+      if (!s.profiles) s.profiles = {};
+      ['arpit','harshita'].forEach(pk => {
+        if (!s.profiles[pk]) s.profiles[pk] = freshProfileState(pk);
+        for (let i = 1; i <= 7; i++) {
+          if (!s.profiles[pk].days[i]) s.profiles[pk].days[i] = freshDay(pk);
+          // Ensure checklist keys match current profile definition
+          const cl = s.profiles[pk].days[i].checklist || {};
+          PROFILES[pk].checklist.forEach(c => { if (!(c.id in cl)) cl[c.id] = false; });
+          s.profiles[pk].days[i].checklist = cl;
+        }
+        if (!s.profiles[pk].physioDone) s.profiles[pk].physioDone = {};
+      });
+      return s;
+    } catch { return freshState(); }
+  }
+  return freshState();
+}
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+let state = loadState();
+
+/* ---------- 5. ACTIVE-PROFILE HELPERS ---------- */
+function P()  { return PROFILES[state.activeProfile]; }         // active profile definition
+function PS() { return state.profiles[state.activeProfile]; }   // active profile state
+function curDay(dn) { return PS().days[dn]; }
+
+function dayTotals(dn) {
+  const d = curDay(dn);
+  const meals = P().diet[dn].meals;
+  let cal=0, p=0, c=0, f=0, fb=0;
+  meals.forEach((m, i) => {
+    if (d.mealsDone[i]) { cal+=m.cal; p+=m.protein; c+=m.carbs; f+=m.fat; fb+=m.fiber; }
+  });
+  return { cal, protein:p, carbs:c, fat:f, fiber:fb };
+}
+function workoutBurned(dn) {
+  const w = P().workouts[dn];
+  const d = curDay(dn);
+  return w.exercises.reduce((sum, ex, i) => sum + (d.workoutDone[i] ? ex.cal : 0), 0);
+}
+
+/* ---------- 6. DOM HELPERS ---------- */
+function $(sel, root=document) { return root.querySelector(sel); }
+function $$(sel, root=document) { return [...root.querySelectorAll(sel)]; }
+
+/* ---------- 7. RENDER: PROFILE CARD + PROFILE SWITCHER ---------- */
+function renderProfileSwitcher() {
+  $$('.prof-btn').forEach(b => {
+    const isActive = b.dataset.profile === state.activeProfile;
+    b.dataset.active = isActive ? 'true' : 'false';
+    b.classList.toggle('text-ink-950', isActive);
+    b.classList.toggle('text-ink-300', !isActive);
+  });
+}
+function renderProfileCard() {
+  const p = P();
+  const c = p.color; // 'emerald' or 'rose'
+  $('#profileCard').innerHTML = `
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <div class="text-[10px] uppercase tracking-widest text-${c}">Active Profile</div>
+        <div class="font-display text-3xl leading-none mt-1">${p.name}</div>
+        <div class="text-sm text-ink-300 mt-1">${p.height} · ${p.weight} kg · ${p.goal}</div>
+      </div>
+      <div class="w-11 h-11 rounded-xl bg-${c}/15 grid place-items-center">
+        <i data-lucide="${p.icon}" class="w-5 h-5 text-${c}"></i>
+      </div>
+    </div>
+    <div class="grid grid-cols-4 gap-2 mt-4">
+      <div class="bg-ink-800 rounded-lg py-2 text-center"><div class="font-display text-lg text-amber">${p.targets.cal}</div><div class="text-[9px] uppercase text-ink-300">kcal</div></div>
+      <div class="bg-ink-800 rounded-lg py-2 text-center"><div class="font-display text-lg text-emerald">${p.targets.protein}g</div><div class="text-[9px] uppercase text-ink-300">Protein</div></div>
+      <div class="bg-ink-800 rounded-lg py-2 text-center"><div class="font-display text-lg text-emerald">${p.targets.steps/1000}k</div><div class="text-[9px] uppercase text-ink-300">Steps</div></div>
+      <div class="bg-ink-800 rounded-lg py-2 text-center"><div class="font-display text-lg text-sky-400">${p.targets.water}</div><div class="text-[9px] uppercase text-ink-300">Water</div></div>
+    </div>
+  `;
+  safeIcons();
+}
+function renderMathCard() {
+  const p = P();
+  $('#mathCard').innerHTML = `
+    <h3 class="font-display text-2xl mb-2 flex items-center gap-2">
+      <i data-lucide="target" class="w-5 h-5 text-amber"></i>
+      ${p.name === 'Arpit' ? 'Your Recomp Math' : 'Your Fat-Loss Math'}
+    </h3>
+    <div class="text-sm text-ink-200 space-y-1.5">
+      ${p.mathRows.map(r => `
+        <div class="flex justify-between gap-3">
+          <span class="text-ink-300">${r[0]}</span>
+          <span class="${r[2] || ''} font-medium text-right">${r[1]}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  safeIcons();
+}
+
+/* ---------- 8. RENDER: DASHBOARD ---------- */
+function updateRings() {
+  const dn = PS().selectedDietDay;
+  const p = P();
+  const w = p.diet[dn];
+  const dayState = curDay(dn);
+  const totals = dayTotals(dn);
+  const burned = workoutBurned(dn);
+
+  $('#dashDayLabel').textContent = w.label + (dn === todayDow() ? ' · Today' : '');
+  $('#dashWorkoutLabel').textContent = p.workouts[dn].name.split(' · ')[0];
+  $('#calTarget').textContent = w.targetCal.toLocaleString();
+
+  const setRing = (id, val, max, color) => {
+    const c = $('#'+id); if (!c) return;
+    const circ = 2 * Math.PI * 26;
+    const pct = Math.min(1, val/max);
+    c.setAttribute('stroke-dasharray', circ);
+    c.setAttribute('stroke-dashoffset', circ * (1 - pct));
+    if (color) c.setAttribute('stroke', color);
+  };
+  setRing('ringSteps', dayState.steps, p.targets.steps, p.accent);
+  setRing('ringCal',   totals.cal,     w.targetCal);
+  setRing('ringWater', dayState.water, p.targets.water);
+
+  $('#stepsVal').textContent = dayState.steps.toLocaleString();
+  $('#calVal').textContent = totals.cal.toLocaleString();
+  $('#waterVal').textContent = dayState.water;
+  $('#inVal').textContent  = totals.cal.toLocaleString();
+  $('#outVal').textContent = burned.toLocaleString();
+  $('#netVal').textContent = (totals.cal - burned).toLocaleString();
+
+  const tip = $('#dashTip');
+  if (w.isCheatDay) {
+    tip.innerHTML = `<strong class="text-amber">Sunday rules:</strong> Cheat meal is intentional, not failure. The dinner protein baseline is non-negotiable so you don't lose muscle. Sleep is the real recovery today.`;
+  } else if (p.workouts[dn].isRest) {
+    tip.textContent = 'Recovery day — light movement + hit your protein floor.';
+  } else if (state.activeProfile === 'harshita') {
+    tip.textContent = 'Fat-loss target: 400–600 kcal deficit today. Protein first, calories second, walk third.';
+  } else {
+    tip.textContent = 'Training day target: slight surplus (~+150 kcal). Protein first, calories second.';
+  }
+}
+function renderChecklist() {
+  const dn = PS().selectedDietDay;
+  const dayState = curDay(dn);
+  const box = $('#checklistBox');
+  box.innerHTML = P().checklist.map(c => `
+    <label class="flex items-center gap-3 bg-ink-800 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-ink-700">
+      <input type="checkbox" class="chk" data-chk="${c.id}" ${dayState.checklist[c.id] ? 'checked' : ''}/>
+      <i data-lucide="${c.icon}" class="w-4 h-4 text-ink-300"></i>
+      <span class="text-sm flex-1">${c.label}</span>
+    </label>
+  `).join('');
+  safeIcons();
+  $$('[data-chk]', box).forEach(el => {
+    el.addEventListener('change', e => {
+      curDay(PS().selectedDietDay).checklist[e.target.dataset.chk] = e.target.checked;
+      saveState();
+    });
+  });
+}
+
+/* ---------- 9. DAY PICKER ---------- */
+function dayPickerHTML(selected, containerId) {
+  const p = P();
+  return Array.from({length:7}, (_,i) => {
+    const d = i + 1;
+    const active = selected === d;
+    const isToday = d === todayDow();
+    const isRest = p.workouts[d].isRest;
+    const bg = active ? `bg-${p.color} text-ink-950 font-medium` : 'bg-ink-800 text-ink-200';
+    const subLabel = containerId === 'workoutDayPicker'
+      ? p.workouts[d].name.split(' · ')[0]
+      : (p.diet[d].isCheatDay ? 'Cheat' : 'Plan');
+    const restColor = active ? 'text-ink-950' : isRest ? 'text-sky-400' : 'text-ink-300';
+    return `<button data-picker="${containerId}" data-day="${d}" class="day-btn ${bg} rounded-lg py-2 text-center transition relative ${isToday ? 'today-dot' : ''}">
+      <div class="font-display text-base leading-none">${DAY_SHORT[d]}</div>
+      <div class="text-[9px] uppercase tracking-wider mt-0.5 ${restColor}" style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${subLabel}</div>
+    </button>`;
+  }).join('');
+}
+function renderWorkoutDayPicker() {
+  $('#workoutDayPicker').innerHTML = dayPickerHTML(PS().selectedWorkoutDay, 'workoutDayPicker');
+  $$('#workoutDayPicker .day-btn').forEach(b => b.addEventListener('click', () => {
+    PS().selectedWorkoutDay = +b.dataset.day;
+    saveState();
+    renderWorkoutDayPicker();
+    renderWorkout();
+  }));
+}
+function renderDietDayPicker() {
+  $('#dietDayPicker').innerHTML = dayPickerHTML(PS().selectedDietDay, 'dietDayPicker');
+  $$('#dietDayPicker .day-btn').forEach(b => b.addEventListener('click', () => {
+    PS().selectedDietDay = +b.dataset.day;
+    saveState();
+    renderDietDayPicker();
+    renderDiet();
+    updateRings();
+    renderChecklist();
+  }));
+}
+
+/* ---------- 10. RENDER: WORKOUT ---------- */
+function renderWorkoutHero() {
+  const p = P();
+  const h = p.workoutHero;
+  $('#workoutHero').innerHTML = `
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <div class="text-[11px] uppercase tracking-widest text-${p.color}">${h.subtitle}</div>
+        <h2 class="font-display text-3xl leading-none mt-1">${h.title}</h2>
+        <p class="text-sm text-ink-300 mt-2">${h.blurb}</p>
+      </div>
+      <i data-lucide="${h.icon}" class="w-8 h-8 text-${p.color}"></i>
+    </div>
+  `;
+  $('#workoutSafety').innerHTML = p.workoutSafety;
+  safeIcons();
+}
+function renderWorkout() {
+  const p = P();
+  const d = PS().selectedWorkoutDay;
+  const w = p.workouts[d];
+  const body = $('#workoutBody');
+  const dayState = curDay(d);
+  const totalCal = w.exercises.reduce((a,e)=>a+e.cal, 0);
+  const doneCount = w.exercises.reduce((a, _, i) => a + (dayState.workoutDone[i] ? 1 : 0), 0);
+
+  body.innerHTML = `
+    <div class="bg-ink-900 ring-soft rounded-2xl p-5">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="text-[11px] uppercase tracking-widest text-${p.color}">${DAY_LABELS[d]} ${d === todayDow() ? '· Today' : ''}</div>
+          <h3 class="font-display text-3xl leading-none mt-1">${w.name}</h3>
+          <p class="text-sm text-ink-300 mt-2">${w.summary}</p>
+        </div>
+        <i data-lucide="${w.icon}" class="w-7 h-7 text-${p.color}"></i>
+      </div>
+      <div class="grid grid-cols-3 gap-3 mt-4">
+        <div class="bg-ink-800 rounded-lg py-2 text-center"><div class="font-display text-xl">${w.exercises.length}</div><div class="text-[10px] uppercase tracking-wider text-ink-300">${w.isRest ? 'Activities' : 'Exercises'}</div></div>
+        <div class="bg-ink-800 rounded-lg py-2 text-center"><div class="font-display text-xl text-amber">~${totalCal}</div><div class="text-[10px] uppercase tracking-wider text-ink-300">Kcal burn</div></div>
+        <div class="bg-ink-800 rounded-lg py-2 text-center"><div class="font-display text-xl text-emerald">${doneCount}/${w.exercises.length}</div><div class="text-[10px] uppercase tracking-wider text-ink-300">Done</div></div>
+      </div>
+    </div>
+    ${w.exercises.map((ex, i) => exerciseCard(d, i, ex)).join('')}
+  `;
+  safeIcons();
+  attachExerciseHandlers();
+}
+function exerciseCard(d, i, ex) {
+  const done = !!curDay(d).workoutDone[i];
+  const ytLink = `https://www.youtube.com/results?search_query=${encodeURIComponent('how to '+ex.name+' proper form')}`;
+  const startPill = ex.startWeight && ex.startWeight !== '—'
+    ? `<span class="text-[11px] bg-emerald/15 text-emerald px-2 py-0.5 rounded-full">Start: ${ex.startWeight}</span>`
+    : '';
+  return `
+    <div class="card bg-ink-900 ring-soft rounded-2xl overflow-hidden ${done ? 'opacity-70' : ''}">
+      <div class="flex">
+        <div class="w-32 sm:w-40 bg-ink-950 grid place-items-center p-2 border-r border-ink-800">${svgPose(ex.pose)}</div>
+        <div class="flex-1 p-4 min-w-0">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <div class="font-display text-xl leading-tight">${ex.name}</div>
+              <div class="text-[11px] text-ink-300 uppercase tracking-wider mt-0.5">${ex.muscle}</div>
+            </div>
+            <button class="ex-done w-8 h-8 rounded-full grid place-items-center flex-shrink-0 ${done ? 'bg-emerald text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'}" data-day="${d}" data-idx="${i}">
+              <i data-lucide="${done ? 'check' : 'circle'}" class="w-4 h-4"></i>
+            </button>
+          </div>
+          <div class="flex gap-2 mt-2 flex-wrap">
+            <span class="text-[11px] bg-ink-800 px-2 py-0.5 rounded-full">${ex.sets}</span>
+            <span class="text-[11px] bg-amber/15 text-amber px-2 py-0.5 rounded-full">${ex.cal} kcal</span>
+            ${startPill}
+          </div>
+        </div>
+      </div>
+      <details class="border-t border-ink-800">
+        <summary class="px-4 py-3 cursor-pointer flex items-center justify-between text-sm text-ink-200">
+          <span class="flex items-center gap-2"><i data-lucide="list-checks" class="w-4 h-4 text-emerald"></i>Form cues & alternatives</span>
+          <i data-lucide="chevron-down" class="w-4 h-4 chev"></i>
+        </summary>
+        <div class="px-4 pb-4 space-y-3 text-sm">
+          <ul class="space-y-1.5 text-ink-200">
+            ${ex.cues.map(c => `<li class="flex gap-2"><span class="text-emerald mt-1">▸</span><span>${c}</span></li>`).join('')}
+          </ul>
+          <div class="bg-ink-800 rounded-lg p-3 text-xs">
+            <div class="text-ink-300 uppercase tracking-wider text-[10px] mb-1">Safer Alternative</div>
+            <div class="text-ink-100">${ex.alt}</div>
+          </div>
+          <a href="${ytLink}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 bg-crimson/15 text-crimson px-3 py-2 rounded-lg text-sm hover:bg-crimson/25 transition">
+            <i data-lucide="youtube" class="w-4 h-4"></i>Watch proper form on YouTube
+          </a>
+        </div>
+      </details>
+    </div>
+  `;
+}
+function attachExerciseHandlers() {
+  $$('.ex-done').forEach(btn => btn.addEventListener('click', () => {
+    const d = +btn.dataset.day;
+    const i = +btn.dataset.idx;
+    curDay(d).workoutDone[i] = !curDay(d).workoutDone[i];
+    saveState();
+    renderWorkout();
+    updateRings();
+  }));
+}
+
+/* ---------- 11. RENDER: DIET ---------- */
+function renderDietHero() {
+  const p = P();
+  $('#dietHero').innerHTML = `
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <div class="text-[11px] uppercase tracking-widest text-amber">${p.name === 'Arpit' ? 'Pure Vegetarian · 3 Meals' : 'Fat-Loss Cut · 3 Meals · High Protein'}</div>
+        <h2 class="font-display text-3xl leading-none mt-1">Weekly Diet Planner</h2>
+        <p class="text-sm text-ink-300 mt-2">${p.name === 'Arpit' ? 'Breakfast (7:30) · Lunch (1:30) · Dinner (9:00)' : 'Breakfast (8:00) · Lunch (1:30) · Dinner (8:30 — early is better)'}</p>
+      </div>
+      <i data-lucide="utensils" class="w-8 h-8 text-amber"></i>
+    </div>
+  `;
+  $('#pantryCard').innerHTML = `
+    <h3 class="font-display text-2xl mb-3 flex items-center gap-2">
+      <i data-lucide="shopping-basket" class="w-5 h-5 text-emerald"></i>${p.pantryIntro}
+    </h3>
+    <div class="grid grid-cols-2 gap-2 text-xs">
+      ${p.pantry.map(([name,note]) => `
+        <div class="bg-ink-800 rounded-lg p-2.5"><strong class="text-emerald">${name}</strong> · ${note}</div>
+      `).join('')}
+    </div>
+  `;
+  safeIcons();
+}
+function renderDiet() {
+  const p = P();
+  const dn = PS().selectedDietDay;
+  const w = p.diet[dn];
+  const dayState = curDay(dn);
+  const body = $('#dietBody');
+  const isCheat = w.isCheatDay;
+
+  $('#dietDayLabel').textContent = w.label + (dn === todayDow() ? ' · Today' : '');
+  $('#dietPlanTotal').textContent = w.targetCal + ' kcal' + (isCheat ? ' (relaxed)' : '');
+  $('#dCalMax').textContent = w.targetCal;
+
+  const totals = dayTotals(dn);
+  $('#dCal').textContent  = totals.cal;
+  $('#dPro').textContent  = totals.protein + 'g';
+  $('#dCarb').textContent = totals.carbs   + 'g';
+  $('#dFat').textContent  = totals.fat     + 'g';
+  $('#dFib').textContent  = totals.fiber   + 'g';
+
+  const planTotal = w.meals.reduce((a, m) => ({
+    cal:a.cal+m.cal, protein:a.protein+m.protein, carbs:a.carbs+m.carbs, fat:a.fat+m.fat, fiber:a.fiber+m.fiber
+  }), { cal:0, protein:0, carbs:0, fat:0, fiber:0 });
+
+  body.innerHTML = `
+    ${isCheat ? `
+      <div class="bg-crimson/10 ring-soft rounded-2xl p-4 flex gap-3 items-start">
+        <i data-lucide="party-popper" class="w-5 h-5 text-crimson flex-shrink-0 mt-0.5"></i>
+        <div class="text-xs text-ink-200 leading-relaxed">
+          <strong class="text-crimson">Cheat-day mode.</strong> ${w.note}
+        </div>
+      </div>
+    ` : `
+      <div class="bg-emerald/5 ring-soft rounded-2xl p-3 text-xs text-ink-300">
+        <span class="text-emerald font-medium">${w.label} note:</span> ${w.note}
+      </div>
+    `}
+    ${w.meals.map((m, i) => {
+      const done = !!dayState.mealsDone[i];
+      return `
+        <div class="card bg-ink-900 ring-soft rounded-2xl p-4 ${done ? 'opacity-70' : ''}">
+          <div class="flex items-start gap-3">
+            <div class="w-11 h-11 rounded-xl bg-${m.color}/15 grid place-items-center flex-shrink-0">
+              <i data-lucide="${m.icon}" class="w-5 h-5 text-${m.color}"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-baseline justify-between gap-2">
+                <div>
+                  <div class="text-[10px] uppercase tracking-widest text-ink-300">${m.meal} · ${m.time}</div>
+                  <div class="font-display text-xl leading-tight">${m.name}</div>
+                  <div class="text-[10px] text-${m.color} uppercase tracking-wider mt-0.5">${m.loc}</div>
+                </div>
+                <button class="meal-done w-8 h-8 rounded-full grid place-items-center flex-shrink-0 ${done ? 'bg-emerald text-ink-950' : 'bg-ink-800 text-ink-300'}" data-idx="${i}">
+                  <i data-lucide="${done ? 'check' : 'circle'}" class="w-4 h-4"></i>
+                </button>
+              </div>
+              <ul class="text-xs text-ink-300 mt-2 space-y-0.5">
+                ${m.ingredients.map(ing => `<li>· ${ing}</li>`).join('')}
+              </ul>
+              <div class="grid grid-cols-5 gap-2 mt-3">
+                ${[
+                  ['kcal', m.cal,         'text-amber'],
+                  ['Pro',  m.protein+'g', 'text-emerald'],
+                  ['Carb', m.carbs+'g',   'text-amber'],
+                  ['Fat',  m.fat+'g',     'text-sky-400'],
+                  ['Fib',  m.fiber+'g',   'text-emerald'],
+                ].map(([l,v,c]) => `
+                  <div class="text-center bg-ink-800 rounded py-1.5">
+                    <div class="text-[9px] uppercase tracking-wider text-ink-300">${l}</div>
+                    <div class="text-xs font-medium ${c}">${v}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('')}
+    <div class="bg-ink-900 ring-soft rounded-2xl p-4">
+      <div class="text-[10px] uppercase tracking-widest text-ink-300 mb-2">Full Plan Totals · ${w.label}</div>
+      <div class="grid grid-cols-5 gap-2 text-center">
+        <div><div class="font-display text-xl text-amber">${planTotal.cal}</div><div class="text-[9px] uppercase text-ink-300">kcal</div></div>
+        <div><div class="font-display text-xl text-emerald">${planTotal.protein}g</div><div class="text-[9px] uppercase text-ink-300">Pro</div></div>
+        <div><div class="font-display text-xl text-amber">${planTotal.carbs}g</div><div class="text-[9px] uppercase text-ink-300">Carb</div></div>
+        <div><div class="font-display text-xl text-sky-400">${planTotal.fat}g</div><div class="text-[9px] uppercase text-ink-300">Fat</div></div>
+        <div><div class="font-display text-xl text-emerald">${planTotal.fiber}g</div><div class="text-[9px] uppercase text-ink-300">Fib</div></div>
+      </div>
+    </div>
+  `;
+  safeIcons();
+  $$('.meal-done').forEach(btn => btn.addEventListener('click', () => {
+    const i = +btn.dataset.idx;
+    curDay(PS().selectedDietDay).mealsDone[i] = !curDay(PS().selectedDietDay).mealsDone[i];
+    saveState();
+    renderDiet();
+    updateRings();
+  }));
+}
+
+/* ---------- 12. RENDER: PHYSIO ---------- */
+function renderPhysioHero() {
+  const p = P();
+  const h = p.physioHero;
+  $('#physioHero').innerHTML = `
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <div class="text-[11px] uppercase tracking-widest text-${h.color}">${h.subtitle}</div>
+        <h2 class="font-display text-3xl leading-none mt-1">${h.title}</h2>
+        <p class="text-sm text-ink-300 mt-2">${h.blurb}</p>
+      </div>
+      <i data-lucide="${h.icon}" class="w-8 h-8 text-${h.color}"></i>
+    </div>
+  `;
+  $('#physioSafety').innerHTML = p.physioSafety;
+  safeIcons();
+}
+function renderPhysio() {
+  const body = $('#physioBody');
+  const p = P();
+  body.innerHTML = p.physio.map((sec, sIdx) => `
+    <div class="bg-ink-900 ring-soft rounded-2xl overflow-hidden">
+      <div class="p-5 border-b border-ink-800 bg-${sec.color}/5">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <i data-lucide="${sec.icon}" class="w-5 h-5 text-${sec.color}"></i>
+              <h3 class="font-display text-2xl leading-none">${sec.title}</h3>
+            </div>
+            <p class="text-sm text-ink-300 mt-2">${sec.sub}</p>
+          </div>
+        </div>
+      </div>
+      <div class="divide-y divide-ink-800">
+        ${sec.items.map((it, iIdx) => {
+          const key = `${sIdx}-${iIdx}`;
+          const done = !!PS().physioDone[key];
+          return `
+            <div class="flex gap-3 p-4 ${done ? 'opacity-60' : ''}">
+              <div class="w-20 h-16 bg-ink-950 rounded-lg p-1 flex-shrink-0">${svgPose(it.pose)}</div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="font-medium text-sm">${it.name}</div>
+                  <button class="physio-done w-7 h-7 rounded-full grid place-items-center flex-shrink-0 ${done ? 'bg-emerald text-ink-950' : 'bg-ink-800 text-ink-300'}" data-key="${key}">
+                    <i data-lucide="${done ? 'check' : 'circle'}" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+                <div class="text-[11px] text-${sec.color} uppercase tracking-wider mt-0.5">${it.reps}</div>
+                <div class="text-xs text-ink-300 mt-1.5 leading-relaxed">${it.why}</div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+  safeIcons();
+  $$('.physio-done').forEach(btn => btn.addEventListener('click', () => {
+    const key = btn.dataset.key;
+    PS().physioDone[key] = !PS().physioDone[key];
+    saveState();
+    renderPhysio();
+  }));
+}
+
+/* ---------- 13. NAV + PROFILE SWITCHING ---------- */
+function showView(v) {
+  ['dashboard','workout','diet','physio'].forEach(name => {
+    $('#view-'+name).classList.toggle('hidden', name !== v);
+  });
+  $$('.nav-btn').forEach(b => b.dataset.active = (b.dataset.view === v) ? 'true' : 'false');
+  const el = $('#view-'+v); el.classList.remove('view'); void el.offsetWidth; el.classList.add('view');
+}
+function switchProfile(profileKey) {
+  if (state.activeProfile === profileKey) return;
+  state.activeProfile = profileKey;
+  saveState();
+  renderAll();
+}
+function attachGlobalHandlers() {
+  $$('.nav-btn').forEach(b => b.addEventListener('click', () => showView(b.dataset.view)));
+  $$('.prof-btn').forEach(b => b.addEventListener('click', () => switchProfile(b.dataset.profile)));
+  $$('.quick-add').forEach(b => b.addEventListener('click', () => {
+    const action = b.dataset.action;
+    const amt = +b.dataset.amount;
+    const dn = PS().selectedDietDay;
+    if (action === 'addSteps') curDay(dn).steps = Math.min(curDay(dn).steps + amt, 99999);
+    if (action === 'addWater') curDay(dn).water = Math.min(curDay(dn).water + amt, 16);
+    saveState();
+    updateRings();
+  }));
+  $('#resetBtn').addEventListener('click', () => {
+    const dn = PS().selectedDietDay;
+    if (confirm(`Reset ${DAY_LABELS[dn]}'s progress for ${P().name}?`)) {
+      PS().days[dn] = freshDay(state.activeProfile);
+      saveState();
+      renderAll();
+    }
+  });
+}
+
+/* ---------- 14. PWA MANIFEST + SW ---------- */
+const MANIFEST = {
+  name: 'AestheticFit — Two-Profile Gym & Diet',
+  short_name: 'AestheticFit',
+  description: 'Two-profile PWA: Arpit recomp + Harshita fat-loss, weekly diet + workout + physio.',
+  start_url: '.', display: 'standalone',
+  background_color: '#08090b', theme_color: '#08090b', orientation: 'portrait',
+  icons: [
+    { src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="36" fill="#08090b"/><circle cx="96" cy="96" r="40" fill="none" stroke="#10b981" stroke-width="10"/><path d="M70 96 L88 110 L122 78" stroke="#10b981" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`), sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
+    { src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#08090b"/><circle cx="256" cy="256" r="110" fill="none" stroke="#10b981" stroke-width="28"/><path d="M186 256 L236 296 L326 206" stroke="#10b981" stroke-width="28" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`), sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+  ]
+};
+try {
+  const manifestBlob = new Blob([JSON.stringify(MANIFEST)], { type: 'application/json' });
+  const link = document.getElementById('manifest-link');
+  if (link) link.href = URL.createObjectURL(manifestBlob);
+} catch (e) {}
+const SW_CODE = `
+  const CACHE = 'aestheticfit-v3';
+  self.addEventListener('install', e => { self.skipWaiting(); });
+  self.addEventListener('activate', e => { e.waitUntil(clients.claim()); });
+  self.addEventListener('fetch', e => {
+    if (e.request.method !== 'GET') return;
+    e.respondWith(caches.open(CACHE).then(cache =>
+      cache.match(e.request).then(hit => hit || fetch(e.request).then(res => {
+        if (res.ok) cache.put(e.request, res.clone());
+        return res;
+      }).catch(()=>hit))
+    ));
+  });
+`;
+if ('serviceWorker' in navigator) {
+  try {
+    const swBlob = new Blob([SW_CODE], { type: 'application/javascript' });
+    navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>{});
+  } catch (e) {}
+}
+
+/* ---------- 15. BOOT ---------- */
+function renderAll() {
+  $('#todayStr').textContent = new Date().toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+  renderProfileSwitcher();
+  renderProfileCard();
+  renderMathCard();
+  renderWorkoutHero();
+  renderDietHero();
+  renderPhysioHero();
+  renderWorkoutDayPicker();
+  renderDietDayPicker();
+  updateRings();
+  renderChecklist();
+  renderWorkout();
+  renderDiet();
+  renderPhysio();
+  safeIcons();
+}
+function boot() {
+  attachGlobalHandlers();
+  renderAll();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
+</script>
+</body>
+</html>
