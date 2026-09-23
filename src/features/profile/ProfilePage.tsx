@@ -20,6 +20,19 @@ import { useProfile } from './ProfileContext'
 import { useNutritionTargets, type NutritionTargets } from '../nutrition/hooks/useNutritionTargets'
 import { AssessmentForm } from './AssessmentForm'
 import type { AssessmentResponses } from './types'
+import type { Database, InsertTables } from '../../types/supabase'
+
+type ExportableTable = keyof Database['public']['Tables']
+const EXPORTABLE_TABLES: ExportableTable[] = [
+  'profiles', 'assessments', 'workout_plans', 'exercise_logs',
+  'workout_logs', 'meal_logs', 'weight_logs', 'skin_logs',
+  'skin_checkins', 'daily_logs', 'streaks',
+]
+const IMPORT_ORDER: ExportableTable[] = [
+  'profiles', 'assessments', 'workout_plans', 'workout_logs',
+  'exercise_logs', 'meal_logs', 'weight_logs', 'skin_logs',
+  'skin_checkins', 'daily_logs', 'streaks',
+]
 
 const APP_VERSION = '5.0.0'
 
@@ -89,16 +102,14 @@ export function ProfilePage() {
     if (!user) return
     setExporting(true)
     try {
-      const tables = [
-        'profiles', 'assessments', 'workout_plans', 'exercise_logs',
-        'workout_logs', 'meal_logs', 'weight_logs', 'skin_logs',
-        'skin_checkins', 'daily_logs', 'streaks',
-      ]
       const results: Record<string, unknown[]> = {}
       await Promise.all(
-        tables.map(async (table) => {
+        EXPORTABLE_TABLES.map(async (table) => {
+          // Same dynamic-table boundary as the import below: the owner column
+          // name varies per table and can't be resolved to a single literal
+          // across a union of all tables at the type level.
           const { data } = await supabase.from(table).select('*').eq(
-            table === 'profiles' ? 'id' : 'user_id',
+            (table === 'profiles' ? 'id' : 'user_id') as never,
             user.id,
           )
           results[table] = data ?? []
@@ -135,16 +146,14 @@ export function ProfilePage() {
         const data = json.data as Record<string, unknown[]> | undefined
         if (!data) throw new Error('Invalid export file')
 
-        const importOrder = [
-          'profiles', 'assessments', 'workout_plans', 'workout_logs',
-          'exercise_logs', 'meal_logs', 'weight_logs', 'skin_logs',
-          'skin_checkins', 'daily_logs', 'streaks',
-        ]
         let count = 0
-        for (const table of importOrder) {
+        for (const table of IMPORT_ORDER) {
           const rows = data[table]
           if (!rows?.length) continue
-          const { error } = await supabase.from(table).upsert(rows as Record<string, unknown>[])
+          // Restoring a previously-exported blob: rows are untyped JSON by
+          // nature (they round-tripped through a file), not a value we can
+          // validate per-table at the type level.
+          const { error } = await supabase.from(table).upsert(rows as unknown as InsertTables<typeof table>[])
           if (!error) count += rows.length
         }
         setImportMsg(`Imported ${count} records successfully`)
