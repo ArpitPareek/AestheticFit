@@ -50,7 +50,7 @@ export function LiftProgress() {
         const byEx = new Map<string, { name: string; sessions: { date: string; e1rm: number; top: ExerciseSet | null }[] }>()
         for (const r of data ?? []) {
           const wl = r.workout_logs as unknown as { workout_date: string }
-          const { e1rm, top } = bestE1RM((r.sets as ExerciseSet[]) ?? [])
+          const { e1rm, top } = bestE1RM((r.sets as unknown as ExerciseSet[]) ?? [])
           if (e1rm <= 0) continue
           const key = r.exercise_id as string
           const entry = byEx.get(key) ?? { name: (r.exercise_name as string) ?? key, sessions: [] }

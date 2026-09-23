@@ -68,7 +68,7 @@ export function useRecoveryWatch() {
 
       const sessions: RecoveryExerciseSession[] = (logsRes.data ?? []).map((r) => {
         const wl = r.workout_logs as unknown as { workout_date: string }
-        const rawSets = (r.sets as ExerciseSet[]) ?? []
+        const rawSets = (r.sets as unknown as ExerciseSet[]) ?? []
         return {
           libraryId: (r.library_exercise_id as string | null) ?? null,
           exerciseId: r.exercise_id as string,

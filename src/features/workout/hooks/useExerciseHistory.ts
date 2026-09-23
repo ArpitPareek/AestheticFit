@@ -36,7 +36,7 @@ export function useExerciseHistory(exerciseIds: string[]) {
         latest[row.exercise_id] = {
           exercise_id: row.exercise_id,
           workout_date: workoutLog.workout_date,
-          sets: row.sets as ExerciseSet[],
+          sets: row.sets as unknown as ExerciseSet[],
         }
       }
       setHistory(latest)
