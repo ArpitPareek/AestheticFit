@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
+import { localTodayISO } from '../../../lib/utils'
 
 export type BreakoutLevel = 'none' | 'few' | 'moderate' | 'many'
 
@@ -43,14 +44,13 @@ export function useSkinCheckins() {
   }): Promise<{ error: string | null }> => {
     if (!user) return { error: 'Not signed in' }
     setSaving(true)
-    const today = new Date().toISOString().slice(0, 10)
+    const today = localTodayISO()
     const { error } = await supabase
       .from('skin_checkins')
-      .insert({
-        user_id: user.id,
-        checkin_date: today,
-        ...checkin,
-      })
+      .upsert(
+        { user_id: user.id, checkin_date: today, ...checkin },
+        { onConflict: 'user_id,checkin_date' },
+      )
     setSaving(false)
     if (!error) await load()
     return { error: error?.message ?? null }
