@@ -22,6 +22,6 @@ create index if not exists weight_logs_user_date_idx
 create index if not exists skin_logs_user_date_idx
   on skin_logs (user_id, log_date);
 
--- Cardio logs: week-range query by (user_id, session_date)
+-- Cardio logs: week-range query by (user_id, log_date)
 create index if not exists cardio_logs_user_date_idx
-  on cardio_logs (user_id, session_date);
+  on cardio_logs (user_id, log_date);
