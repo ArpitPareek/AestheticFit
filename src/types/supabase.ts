@@ -52,6 +52,7 @@ export interface Database {
           source?: string
           created_at?: string
         }
+        Relationships: []
       }
       assessments: {
         Row: {
@@ -78,6 +79,15 @@ export interface Database {
           completed_at?: string
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "assessments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cardio_logs: {
         Row: {
@@ -87,18 +97,18 @@ export interface Database {
           type: string
           minutes: number
           intensity: string
-          notes: string
+          notes: string | null
           created_at: string
         }
         Insert: {
-          id: string
+          id?: string
           user_id: string
           log_date: string
           type: string
           minutes: number
           intensity: string
-          notes?: string
-          created_at: string
+          notes?: string | null
+          created_at?: string
         }
         Update: {
           id?: string
@@ -107,9 +117,18 @@ export interface Database {
           type?: string
           minutes?: number
           intensity?: string
-          notes?: string
+          notes?: string | null
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "cardio_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       custom_exercises: {
         Row: {
@@ -154,6 +173,15 @@ export interface Database {
           gif_url?: string
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "custom_exercises_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       custom_foods: {
         Row: {
@@ -213,38 +241,56 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "custom_foods_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       daily_logs: {
         Row: {
           id: string
           user_id: string
           log_date: string
-          steps: number
-          sleep_hours: number
-          water_glasses: number
-          notes: string
+          steps: number | null
+          sleep_hours: number | null
+          water_glasses: number | null
+          notes: string | null
           created_at: string
         }
         Insert: {
-          id: string
+          id?: string
           user_id: string
           log_date: string
-          steps?: number
-          sleep_hours?: number
-          water_glasses?: number
-          notes?: string
-          created_at: string
+          steps?: number | null
+          sleep_hours?: number | null
+          water_glasses?: number | null
+          notes?: string | null
+          created_at?: string
         }
         Update: {
           id?: string
           user_id?: string
           log_date?: string
-          steps?: number
-          sleep_hours?: number
-          water_glasses?: number
-          notes?: string
+          steps?: number | null
+          sleep_hours?: number | null
+          water_glasses?: number | null
+          notes?: string | null
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "daily_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       exercise_library: {
         Row: {
@@ -319,6 +365,7 @@ export interface Database {
           media_license?: string
           deprecated?: boolean
         }
+        Relationships: []
       }
       exercise_logs: {
         Row: {
@@ -330,32 +377,32 @@ export interface Database {
           order_index: number
           sets: Json
           created_at: string
-          library_exercise_id: string
-          custom_exercise_id: string
-          swapped_from_ref: string
-          swap_reason: string
+          library_exercise_id: string | null
+          custom_exercise_id: string | null
+          swapped_from_ref: string | null
+          swap_reason: string | null
           is_ad_hoc: boolean
-          plan_version_id: string
-          ladder_assist_kg: number
-          ladder_surface_level: string
+          plan_version_id: string | null
+          ladder_assist_kg: number | null
+          ladder_surface_level: number | null
         }
         Insert: {
-          id: string
+          id?: string
           user_id: string
           workout_log_id: string
           exercise_id?: string
           exercise_name: string
           order_index: number
           sets: Json
-          created_at: string
-          library_exercise_id?: string
-          custom_exercise_id?: string
-          swapped_from_ref?: string
-          swap_reason?: string
+          created_at?: string
+          library_exercise_id?: string | null
+          custom_exercise_id?: string | null
+          swapped_from_ref?: string | null
+          swap_reason?: string | null
           is_ad_hoc: boolean
-          plan_version_id?: string
-          ladder_assist_kg?: number
-          ladder_surface_level?: string
+          plan_version_id?: string | null
+          ladder_assist_kg?: number | null
+          ladder_surface_level?: number | null
         }
         Update: {
           id?: string
@@ -366,15 +413,52 @@ export interface Database {
           order_index?: number
           sets?: Json
           created_at?: string
-          library_exercise_id?: string
-          custom_exercise_id?: string
-          swapped_from_ref?: string
-          swap_reason?: string
+          library_exercise_id?: string | null
+          custom_exercise_id?: string | null
+          swapped_from_ref?: string | null
+          swap_reason?: string | null
           is_ad_hoc?: boolean
-          plan_version_id?: string
-          ladder_assist_kg?: number
-          ladder_surface_level?: string
+          plan_version_id?: string | null
+          ladder_assist_kg?: number | null
+          ladder_surface_level?: number | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_logs_workout_log_id_fkey"
+            columns: ["workout_log_id"]
+            isOneToOne: false
+            referencedRelation: "workout_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_logs_library_exercise_id_fkey"
+            columns: ["library_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_library"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_logs_custom_exercise_id_fkey"
+            columns: ["custom_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "custom_exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_logs_plan_version_id_fkey"
+            columns: ["plan_version_id"]
+            isOneToOne: false
+            referencedRelation: "workout_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       food_aliases: {
         Row: {
@@ -392,6 +476,15 @@ export interface Database {
           alias_text?: string
           food_id?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "food_aliases_food_id_fkey"
+            columns: ["food_id"]
+            isOneToOne: false
+            referencedRelation: "food_library"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       food_library: {
         Row: {
@@ -442,6 +535,7 @@ export interface Database {
           source?: string
           created_at?: string
         }
+        Relationships: []
       }
       meal_logs: {
         Row: {
@@ -449,36 +543,36 @@ export interface Database {
           user_id: string
           log_date: string
           meal_type: string
-          food_id: string
+          food_id: string | null
           food_name: string
           servings: number
           calories: number
           protein_g: number
           carbs_g: number
           fat_g: number
-          notes: string
+          notes: string | null
           created_at: string
-          custom_food_id: string
-          item_label: string
+          custom_food_id: string | null
+          item_label: string | null
           fiber_g: number
           source: string
         }
         Insert: {
-          id: string
+          id?: string
           user_id: string
           log_date: string
           meal_type: string
-          food_id?: string
+          food_id?: string | null
           food_name: string
           servings: number
           calories: number
           protein_g: number
           carbs_g: number
           fat_g: number
-          notes?: string
-          created_at: string
-          custom_food_id?: string
-          item_label?: string
+          notes?: string | null
+          created_at?: string
+          custom_food_id?: string | null
+          item_label?: string | null
           fiber_g?: number
           source?: string
         }
@@ -487,20 +581,43 @@ export interface Database {
           user_id?: string
           log_date?: string
           meal_type?: string
-          food_id?: string
+          food_id?: string | null
           food_name?: string
           servings?: number
           calories?: number
           protein_g?: number
           carbs_g?: number
           fat_g?: number
-          notes?: string
+          notes?: string | null
           created_at?: string
-          custom_food_id?: string
-          item_label?: string
+          custom_food_id?: string | null
+          item_label?: string | null
           fiber_g?: number
           source?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "meal_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_logs_food_id_fkey"
+            columns: ["food_id"]
+            isOneToOne: false
+            referencedRelation: "food_library"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_logs_custom_food_id_fkey"
+            columns: ["custom_food_id"]
+            isOneToOne: false
+            referencedRelation: "custom_foods"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       nutrition_config: {
         Row: {
@@ -545,6 +662,15 @@ export interface Database {
           last_adjusted_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "nutrition_config_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       nutrition_target_history: {
         Row: {
@@ -592,6 +718,15 @@ export interface Database {
           source?: string
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "nutrition_target_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       nutrition_targets: {
         Row: {
@@ -610,7 +745,7 @@ export interface Database {
           carbs_g: number
           fat_g: number
           fiber_g?: number
-          updated_at: string
+          updated_at?: string
         }
         Update: {
           user_id?: string
@@ -621,6 +756,15 @@ export interface Database {
           fiber_g?: number
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "nutrition_targets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       portion_conversions: {
         Row: {
@@ -638,41 +782,51 @@ export interface Database {
           unit?: string
           grams_equivalent?: number
         }
+        Relationships: [
+          {
+            foreignKeyName: "portion_conversions_food_id_fkey"
+            columns: ["food_id"]
+            isOneToOne: false
+            referencedRelation: "food_library"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
           id: string
           display_name: string
-          age: number
-          sex: string
-          height_cm: number
-          current_weight_kg: number
-          target_weight_kg: number
+          age: number | null
+          sex: string | null
+          height_cm: number | null
+          current_weight_kg: number | null
+          target_weight_kg: number | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id: string
           display_name: string
-          age?: number
-          sex?: string
-          height_cm?: number
-          current_weight_kg?: number
-          target_weight_kg?: number
-          created_at: string
-          updated_at: string
+          age?: number | null
+          sex?: string | null
+          height_cm?: number | null
+          current_weight_kg?: number | null
+          target_weight_kg?: number | null
+          created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           display_name?: string
-          age?: number
-          sex?: string
-          height_cm?: number
-          current_weight_kg?: number
-          target_weight_kg?: number
+          age?: number | null
+          sex?: string | null
+          height_cm?: number | null
+          current_weight_kg?: number | null
+          target_weight_kg?: number | null
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
       progress_photos: {
         Row: {
@@ -684,12 +838,12 @@ export interface Database {
           created_at: string
         }
         Insert: {
-          id: string
+          id?: string
           user_id: string
           taken_on: string
           pose: string
           storage_path: string
-          created_at: string
+          created_at?: string
         }
         Update: {
           id?: string
@@ -699,6 +853,15 @@ export interface Database {
           storage_path?: string
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "progress_photos_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rate_limit: {
         Row: {
@@ -719,6 +882,15 @@ export interface Database {
           window_start?: string
           count?: number
         }
+        Relationships: [
+          {
+            foreignKeyName: "rate_limit_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recipe_ingredients: {
         Row: {
@@ -742,6 +914,29 @@ export interface Database {
           custom_food_id?: string
           quantity_servings?: number
         }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "custom_foods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_library_food_id_fkey"
+            columns: ["library_food_id"]
+            isOneToOne: false
+            referencedRelation: "food_library"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_custom_food_id_fkey"
+            columns: ["custom_food_id"]
+            isOneToOne: false
+            referencedRelation: "custom_foods"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       skin_checkins: {
         Row: {
@@ -756,7 +951,7 @@ export interface Database {
           created_at: string
         }
         Insert: {
-          id: string
+          id?: string
           user_id: string
           checkin_date: string
           texture_score: number
@@ -764,7 +959,7 @@ export interface Database {
           hydration_score: number
           breakout_level: string
           notes?: string
-          created_at: string
+          created_at?: string
         }
         Update: {
           id?: string
@@ -777,6 +972,15 @@ export interface Database {
           notes?: string
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "skin_checkins_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       skin_logs: {
         Row: {
@@ -789,13 +993,13 @@ export interface Database {
           created_at: string
         }
         Insert: {
-          id: string
+          id?: string
           user_id: string
           log_date: string
           routine_type: string
           steps_done: Json
           notes?: string
-          created_at: string
+          created_at?: string
         }
         Update: {
           id?: string
@@ -806,6 +1010,15 @@ export interface Database {
           notes?: string
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "skin_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       streaks: {
         Row: {
@@ -818,13 +1031,13 @@ export interface Database {
           updated_at: string
         }
         Insert: {
-          id: string
+          id?: string
           user_id: string
           streak_type: string
           current_count: number
           longest_count: number
           last_active_date?: string
-          updated_at: string
+          updated_at?: string
         }
         Update: {
           id?: string
@@ -835,6 +1048,15 @@ export interface Database {
           last_active_date?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "streaks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tdee_estimates: {
         Row: {
@@ -882,6 +1104,15 @@ export interface Database {
           confidence?: string
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "tdee_estimates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       weight_logs: {
         Row: {
@@ -889,34 +1120,43 @@ export interface Database {
           user_id: string
           log_date: string
           weight_kg: number
-          waist_cm: number
-          notes: string
+          waist_cm: number | null
+          notes: string | null
           created_at: string
-          hip_cm: number
-          bust_cm: number
+          hip_cm: number | null
+          bust_cm: number | null
         }
         Insert: {
-          id: string
+          id?: string
           user_id: string
           log_date: string
           weight_kg: number
-          waist_cm?: number
-          notes?: string
-          created_at: string
-          hip_cm?: number
-          bust_cm?: number
+          waist_cm?: number | null
+          notes?: string | null
+          created_at?: string
+          hip_cm?: number | null
+          bust_cm?: number | null
         }
         Update: {
           id?: string
           user_id?: string
           log_date?: string
           weight_kg?: number
-          waist_cm?: number
-          notes?: string
+          waist_cm?: number | null
+          notes?: string | null
           created_at?: string
-          hip_cm?: number
-          bust_cm?: number
+          hip_cm?: number | null
+          bust_cm?: number | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "weight_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workout_logs: {
         Row: {
@@ -933,7 +1173,7 @@ export interface Database {
           prehab_skipped: boolean
         }
         Insert: {
-          id: string
+          id?: string
           user_id: string
           plan_id?: string
           plan_version?: number
@@ -942,8 +1182,8 @@ export interface Database {
           started_at: string
           completed_at?: string
           notes?: string
-          created_at: string
-          prehab_skipped: boolean
+          created_at?: string
+          prehab_skipped?: boolean
         }
         Update: {
           id?: string
@@ -958,6 +1198,22 @@ export interface Database {
           created_at?: string
           prehab_skipped?: boolean
         }
+        Relationships: [
+          {
+            foreignKeyName: "workout_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_logs_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "workout_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workout_plans: {
         Row: {
@@ -978,7 +1234,7 @@ export interface Database {
           phase_weeks: number
         }
         Insert: {
-          id: string
+          id?: string
           user_id: string
           assessment_id?: string
           plan_version: number
@@ -989,8 +1245,8 @@ export interface Database {
           weeks_per_phase: number
           start_date?: string
           is_active: boolean
-          created_at: string
-          plan_source: string
+          created_at?: string
+          plan_source?: string
           sort_order?: number
           phase_weeks?: number
         }
@@ -1011,13 +1267,53 @@ export interface Database {
           sort_order?: number
           phase_weeks?: number
         }
+        Relationships: [
+          {
+            foreignKeyName: "workout_plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_plans_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
-      [_ in never]: never
+      weight_trend: {
+        Row: {
+          user_id: string
+          log_date: string
+          ma_7d: number | null
+          ma_14d: number | null
+          ma_28d: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weight_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      [_ in never]: never
+      activate_plan: {
+        Args: { p_user: string; p_plan: string }
+        Returns: undefined
+      }
+      advance_to_coach_phase: {
+        Args: { target_phase: number }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
