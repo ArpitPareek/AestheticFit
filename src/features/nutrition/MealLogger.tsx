@@ -410,9 +410,10 @@ export function MealLogger() {
   const handleAddFood = useCallback(
     async (food: Food, servings: number) => {
       if (!pickerMeal) return
+      // TODO F1: backfill historical nulls after food reseed
       const result = await addMeal({
         meal_type: pickerMeal,
-        food_id: null,
+        food_id: food.id,
         food_name: food.name,
         servings,
         calories: Math.round(food.calories * servings),
