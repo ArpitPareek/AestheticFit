@@ -1,12 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
+import type { Views } from '../../../types/supabase'
 
-export interface WeightTrendPoint {
-  log_date: string
-  ma_7d: number | null
-  ma_28d: number | null
-}
+export type WeightTrendPoint = Pick<Views<'weight_trend'>, 'log_date' | 'ma_7d' | 'ma_28d'>
 
 /**
  * Latest row of the `weight_trend` view (migration 016): 7- and 28-day moving
@@ -32,7 +29,7 @@ export function useWeightTrend() {
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return
-        setLatest((data as WeightTrendPoint) ?? null)
+        setLatest(data ?? null)
         setLoading(false)
       })
     return () => {

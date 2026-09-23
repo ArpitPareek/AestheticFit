@@ -1,22 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
+import type { Tables } from '../../../types/supabase'
 
-export interface WeightLog {
-  id: string
-  log_date: string
-  weight_kg: number
-  waist_cm: number | null
-  hip_cm: number | null
-  bust_cm: number | null
-  notes: string | null
-}
+export type WeightLog = Pick<
+  Tables<'weight_logs'>,
+  'id' | 'log_date' | 'weight_kg' | 'waist_cm' | 'hip_cm' | 'bust_cm' | 'notes'
+>
 
-export interface BodyMeasures {
-  waist_cm: number | null
-  hip_cm: number | null
-  bust_cm: number | null
-}
+export type BodyMeasures = Pick<Tables<'weight_logs'>, 'waist_cm' | 'hip_cm' | 'bust_cm'>
 
 export function useWeightLogs() {
   const { user } = useAuth()
