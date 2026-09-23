@@ -74,8 +74,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     ])
 
     setProfile(profileRes.data ?? null)
-    setAssessment(assessmentRes.data ?? null)
-    setActivePlan((activePlanRes.data as WorkoutPlanRow) ?? null)
+    setAssessment((assessmentRes.data as unknown as Assessment) ?? null)
+    setActivePlan((activePlanRes.data as unknown as WorkoutPlanRow) ?? null)
     setDraftPlan(null)
     setLoading(false)
   }, [user])
@@ -90,7 +90,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
-    setDraftPlan((data as WorkoutPlanRow) ?? null)
+    setDraftPlan((data as unknown as WorkoutPlanRow) ?? null)
   }, [user])
 
   useEffect(() => {
