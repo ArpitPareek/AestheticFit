@@ -8,6 +8,7 @@ import type { AssessmentResponses } from '../profile/types'
 import { generatePhasePlanData } from './planGeneratorCore'
 import { getPhaseTemplates } from './planTemplates'
 import type { GoalMode, LibraryExercise, PlanData } from './planTypes'
+import type { Json } from '../../types/supabase'
 
 export { generatePhasePlanData } from './planGeneratorCore'
 
@@ -44,7 +45,7 @@ async function fetchLatestAssessment(userId: string): Promise<{ id: string; resp
     .maybeSingle()
   if (error) throw error
   if (!data) return null
-  return { id: data.id, responses: data.responses as AssessmentResponses }
+  return { id: data.id, responses: data.responses as unknown as AssessmentResponses }
 }
 
 async function fetchGoalMode(userId: string): Promise<GoalMode> {
@@ -82,7 +83,7 @@ export async function generateDraftPlan(userId: string): Promise<WorkoutPlanRow>
     .limit(1)
     .maybeSingle()
   if (existingErr) throw existingErr
-  if (existingDraft) return existingDraft as WorkoutPlanRow
+  if (existingDraft) return existingDraft as unknown as WorkoutPlanRow
 
   const [goalMode, library] = await Promise.all([fetchGoalMode(userId), fetchLibrary()])
 
@@ -99,7 +100,7 @@ export async function generateDraftPlan(userId: string): Promise<WorkoutPlanRow>
       assessment_id: assessment.id,
       plan_version: version,
       plan_name: planName(goalMode, phaseNumber, template),
-      plan_data: { ...planData, version },
+      plan_data: { ...planData, version } as unknown as Json,
       phase: phaseNumber,
       total_phases: templates.length,
       weeks_per_phase: template.weekEnd - template.weekStart + 1,
@@ -109,7 +110,7 @@ export async function generateDraftPlan(userId: string): Promise<WorkoutPlanRow>
     .select('id, plan_name, plan_data, phase, total_phases, start_date, is_active')
     .single()
   if (insertError) throw insertError
-  return inserted as WorkoutPlanRow
+  return inserted as unknown as WorkoutPlanRow
 }
 
 /**
@@ -167,7 +168,7 @@ export async function advanceToNextPhase(userId: string): Promise<void> {
   const template = templates.find((t) => t.phaseNumber === nextPhaseNumber)
   if (!template) throw new Error(`Phase ${nextPhaseNumber} does not exist for goal_mode=${goalMode} — plan is complete`)
 
-  const assessment = assessmentRes.data.responses as AssessmentResponses
+  const assessment = assessmentRes.data.responses as unknown as AssessmentResponses
   const planData = generatePhasePlanData(assessment, goalMode, nextPhaseNumber, library)
 
   const nextVersion = activePlan.plan_version + 1
@@ -179,7 +180,7 @@ export async function advanceToNextPhase(userId: string): Promise<void> {
     assessment_id: activePlan.assessment_id,
     plan_version: nextVersion,
     plan_name: planName(goalMode, nextPhaseNumber, template),
-    plan_data: { ...planData, version: nextVersion },
+    plan_data: { ...planData, version: nextVersion } as unknown as Json,
     phase: nextPhaseNumber,
     total_phases: templates.length,
     weeks_per_phase: template.weekEnd - template.weekStart + 1,
