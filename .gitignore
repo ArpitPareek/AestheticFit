@@ -3,6 +3,7 @@ dist
 .env
 .env.*
 !.env.example
+!.env.seed.example
 .env.seed
 backup_*.sql
 *.local
