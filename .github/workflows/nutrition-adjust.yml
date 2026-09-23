@@ -1,0 +1,17 @@
+name: Weekly nutrition adjust
+on:
+  schedule:
+    - cron: '0 3 * * 0' # Sundays 03:00 UTC
+  workflow_dispatch: # manual trigger for testing
+
+jobs:
+  invoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call adjust-nutrition-targets edge function
+        run: |
+          curl -fsS -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/adjust-nutrition-targets" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}'

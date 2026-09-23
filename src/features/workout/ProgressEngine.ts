@@ -19,9 +19,6 @@ function avgReps(sets: ExerciseSet[]): number {
   return sets.reduce((sum, s) => sum + s.reps, 0) / sets.length
 }
 
-function maxWeight(sets: ExerciseSet[]): number {
-  return Math.max(...sets.map((s) => s.weight_kg), 0)
-}
 
 function topSetWeight(sets: ExerciseSet[]): number {
   if (sets.length === 0) return 0
@@ -48,13 +45,53 @@ function consecutiveFailures(sessions: SessionSummary[], targetRepsMin: number):
   return count
 }
 
+// The five coach progression verbs (+ two legacy generator values) collapse to
+// these five canonical rules. Anything unrecognised maps to double_progression —
+// the safe general default — so a stray value can NEVER produce "no
+// recommendation" (the explicit failure mode we must avoid).
+type CanonicalProgression =
+  | 'double_progression'
+  | 'novice_linear'
+  | 'load_progression'
+  | 'rep_progression'
+  | 'assist_reduction'
+
+function canonicalProgression(rule: string): CanonicalProgression {
+  switch (rule) {
+    case 'double_progression':
+    case 'double-progression': // legacy hyphenated form
+      return 'double_progression'
+    case 'load_progression':
+      return 'load_progression'
+    case 'rep_progression':
+      return 'rep_progression'
+    case 'assist_reduction':
+      return 'assist_reduction'
+    case 'novice_linear':
+    case 'linear': // legacy generator "linear" == add load while form holds
+      return 'novice_linear'
+    default:
+      return 'double_progression'
+  }
+}
+
 export function getRecommendation(
   exercise: PlanExerciseEntry,
   lastSessions: SessionSummary[],
   _overloadRules: PlanOverloadRules,
   isDeloadWeek: boolean,
 ): Recommendation {
+  const rule = canonicalProgression(exercise.progressionRule)
+
   if (lastSessions.length === 0) {
+    if (rule === 'assist_reduction') {
+      return {
+        recommendedWeight: 0,
+        recommendedReps: exercise.targetRepsMin,
+        reason:
+          'First session — set assistance (or surface height) so the target reps are hard but clean. Progress by REDUCING assistance / lowering the surface, never by adding load.',
+      }
+    }
     return {
       recommendedWeight: 0,
       recommendedReps: exercise.targetRepsMin,
@@ -66,6 +103,24 @@ export function getRecommendation(
   const lastWeight = topSetWeight(latest.sets)
   const lastAvgReps = avgReps(latest.sets)
 
+  // assist_reduction: a bodyweight ladder (assisted pull-up / incline push-up).
+  // Load is NOT the lever — hold it and progress by taking assistance off or
+  // lowering the surface. Never auto-bump load, never "drop weight" on a miss.
+  if (rule === 'assist_reduction') {
+    if (isDeloadWeek) {
+      return {
+        recommendedWeight: lastWeight,
+        recommendedReps: exercise.targetRepsMin,
+        reason: 'Deload — add a little assistance / raise the surface and keep the sets easy this week',
+      }
+    }
+    return {
+      recommendedWeight: lastWeight,
+      recommendedReps: exercise.targetRepsMax,
+      reason: `Progress by taking a notch off the assistance (or lowering the surface) — not by adding load. Own ${exercise.targetRepsMin}-${exercise.targetRepsMax} clean reps, then reduce the help.`,
+    }
+  }
+
   if (isDeloadWeek) {
     const deloadWeight = Math.round((lastWeight * 0.6) / MIN_WEIGHT_INCREMENT) * MIN_WEIGHT_INCREMENT
     return {
@@ -75,8 +130,11 @@ export function getRecommendation(
     }
   }
 
+  // A fixed-load rep ladder (planks, dead-bug, hanging-leg-raise) never drops
+  // "weight" on a miss — you just hold the reps — so the failure-deload only
+  // applies to the load-based rules.
   const failures = consecutiveFailures(lastSessions, exercise.targetRepsMin)
-  if (failures >= 2) {
+  if (failures >= 2 && rule !== 'rep_progression') {
     const reducedWeight = Math.max(
       0,
       Math.round((lastWeight * 0.9) / MIN_WEIGHT_INCREMENT) * MIN_WEIGHT_INCREMENT,
@@ -88,36 +146,72 @@ export function getRecommendation(
     }
   }
 
-  if (exercise.progressionRule === 'double-progression') {
-    if (allSetsHitTarget(latest.sets, exercise.targetRepsMax)) {
-      const newWeight = lastWeight + WEIGHT_INCREMENT
+  switch (rule) {
+    case 'double_progression': {
+      // Earn the top of the rep range on every set, THEN add load and reset low.
+      if (allSetsHitTarget(latest.sets, exercise.targetRepsMax)) {
+        const newWeight = lastWeight + WEIGHT_INCREMENT
+        return {
+          recommendedWeight: newWeight,
+          recommendedReps: exercise.targetRepsMin,
+          reason: `Hit ${exercise.targetRepsMax} reps on all sets — increase to ${newWeight}kg`,
+        }
+      }
       return {
-        recommendedWeight: newWeight,
-        recommendedReps: exercise.targetRepsMin,
-        reason: `Hit ${exercise.targetRepsMax} reps on all sets — increase to ${newWeight}kg`,
+        recommendedWeight: lastWeight,
+        recommendedReps: Math.min(Math.round(lastAvgReps) + 1, exercise.targetRepsMax),
+        reason: `Add reps at ${lastWeight}kg until you hit ${exercise.targetRepsMax} on all sets`,
       }
     }
-    return {
-      recommendedWeight: lastWeight,
-      recommendedReps: Math.min(Math.round(lastAvgReps) + 1, exercise.targetRepsMax),
-      reason: `Add reps at ${lastWeight}kg until you hit ${exercise.targetRepsMax} on all sets`,
-    }
-  }
 
-  // Linear progression
-  if (allSetsHitMin(latest.sets, exercise.targetRepsMin)) {
-    const newWeight = lastWeight + WEIGHT_INCREMENT
-    return {
-      recommendedWeight: newWeight,
-      recommendedReps: exercise.targetRepsMin,
-      reason: `Good progress — increase to ${newWeight}kg`,
+    case 'load_progression': {
+      // Strength block: keep reps in a low band, push the load once the rep
+      // floor is cleared on all sets.
+      if (allSetsHitMin(latest.sets, exercise.targetRepsMin)) {
+        const newWeight = lastWeight + WEIGHT_INCREMENT
+        return {
+          recommendedWeight: newWeight,
+          recommendedReps: exercise.targetRepsMin,
+          reason: `Cleared ${exercise.targetRepsMin}+ on all sets — add load to ${newWeight}kg, keep reps ${exercise.targetRepsMin}-${exercise.targetRepsMax}`,
+        }
+      }
+      return {
+        recommendedWeight: lastWeight,
+        recommendedReps: exercise.targetRepsMin,
+        reason: `Hold ${lastWeight}kg until every set clears ${exercise.targetRepsMin} reps, then add load`,
+      }
     }
-  }
 
-  return {
-    recommendedWeight: lastWeight,
-    recommendedReps: exercise.targetRepsMin,
-    reason: `Stay at ${lastWeight}kg — aim for ${exercise.targetRepsMin}+ reps on all sets`,
+    case 'rep_progression': {
+      // Fixed load, add reps toward the top of the range (bodyweight/timed core).
+      const nextReps = Math.min(Math.round(lastAvgReps) + 1, exercise.targetRepsMax)
+      return {
+        recommendedWeight: lastWeight,
+        recommendedReps: nextReps,
+        reason:
+          lastAvgReps >= exercise.targetRepsMax
+            ? `Owning ${exercise.targetRepsMax} — make it harder (load/tempo/ROM), then rebuild the reps`
+            : `Same load — add reps toward ${exercise.targetRepsMax} (progress by reps, not weight)`,
+      }
+    }
+
+    case 'novice_linear':
+    default: {
+      // Novice linear: add load every session the rep floor + form hold.
+      if (allSetsHitMin(latest.sets, exercise.targetRepsMin)) {
+        const newWeight = lastWeight + WEIGHT_INCREMENT
+        return {
+          recommendedWeight: newWeight,
+          recommendedReps: exercise.targetRepsMin,
+          reason: `Good progress — increase to ${newWeight}kg`,
+        }
+      }
+      return {
+        recommendedWeight: lastWeight,
+        recommendedReps: exercise.targetRepsMin,
+        reason: `Stay at ${lastWeight}kg — aim for ${exercise.targetRepsMin}+ reps on all sets`,
+      }
+    }
   }
 }
 

@@ -1,3 +1,5 @@
+import type { ProgressionRule } from '../features/workout/planTypes'
+
 // ─── Exercise Logging ──────────────────────────────────────
 export interface ExerciseSet {
   set_number: number
@@ -5,6 +7,12 @@ export interface ExerciseSet {
   reps: number
   rir?: number
   notes?: string
+  // Ladder metrics for assist_reduction exercises (Person B). Progress = these
+  // FALL, never a piggyback on weight_kg. assisted-pull-up uses assist_kg
+  // (machine/band load, 0 = unassisted); incline-push-up uses surface_level
+  // (5=wall … 1=floor, lower = harder = progress).
+  assist_kg?: number
+  surface_level?: number
 }
 
 // ─── Plan Exercise (used in generated plans) ──────────────
@@ -15,7 +23,7 @@ export interface PlanExerciseEntry {
   targetRepsMax: number
   targetRir: number
   restSeconds: number
-  progressionRule: 'linear' | 'double-progression'
+  progressionRule: ProgressionRule
   notes: string
   alternatives: string[]
 }

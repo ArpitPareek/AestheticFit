@@ -1,0 +1,255 @@
+[
+  {
+    "version": 1,
+    "phase": 1,
+    "total_phases": 4,
+    "days": [
+      {
+        "label": "Lower — Glute Focus",
+        "split": "legs",
+        "exercises": [
+          { "ref": { "type": "library", "id": "hip-thrust" }, "sets": 3, "rep_low": 10, "rep_high": 15, "rir": 2, "rest_s": 120, "progression": "double_progression", "note": "GLUTE priority lift; ribs down, 1s squeeze at top.", "alternatives": [ { "type": "library", "id": "glute-bridge" }, { "type": "library", "id": "cable-pull-through" } ] },
+          { "ref": { "type": "library", "id": "romanian-deadlift" }, "sets": 3, "rep_low": 10, "rep_high": 12, "rir": 2, "rest_s": 120, "progression": "double_progression", "note": "Hip hinge, glute+ham stretch; light to re-learn.", "alternatives": [ { "type": "library", "id": "cable-pull-through" }, { "type": "library", "id": "leg-curl" } ] },
+          { "ref": { "type": "library", "id": "cable-pull-through" }, "sets": 3, "rep_low": 12, "rep_high": 15, "rir": 1, "rest_s": 75, "progression": "double_progression", "note": "Pure hip-hinge glute squeeze; to failure.", "alternatives": [ { "type": "library", "id": "glute-bridge" }, { "type": "library", "id": "romanian-deadlift" } ] },
+          { "ref": { "type": "library", "id": "hip-abduction-machine" }, "sets": 3, "rep_low": 15, "rep_high": 20, "rir": 1, "rest_s": 60, "progression": "double_progression", "note": "Glute MED — the hip-dip lever; lean forward slightly.", "alternatives": [ { "type": "library", "id": "banded-glute-bridge" }, { "type": "library", "id": "cable-glute-kickback" } ] },
+          { "ref": { "type": "library", "id": "leg-curl" }, "sets": 3, "rep_low": 10, "rep_high": 15, "rir": 1, "rest_s": 75, "progression": "double_progression", "note": "Hamstring; protects knee, balances glute work.", "alternatives": [ { "type": "library", "id": "romanian-deadlift" }, { "type": "library", "id": "good-mornings" } ] }
+        ]
+      },
+      {
+        "label": "Upper — Push & Pull",
+        "split": "full",
+        "exercises": [
+          { "ref": { "type": "library", "id": "machine-chest-press" }, "sets": 3, "rep_low": 8, "rep_high": 12, "rir": 2, "rest_s": 120, "progression": "double_progression", "note": "Perky-chest = pec dev under fat; incline pad if available.", "alternatives": [ { "type": "library", "id": "incline-dumbbell-press" }, { "type": "library", "id": "incline-push-up" } ] },
+          { "ref": { "type": "library", "id": "lat-pulldown" }, "sets": 3, "rep_low": 10, "rep_high": 12, "rir": 2, "rest_s": 120, "progression": "double_progression", "note": "Builds pulling base toward pull-ups; full stretch.", "alternatives": [ { "type": "library", "id": "assisted-pull-up" }, { "type": "library", "id": "cable-row" } ] },
+          { "ref": { "type": "library", "id": "incline-push-up" }, "sets": 3, "rep_low": 6, "rep_high": 12, "rir": 2, "rest_s": 90, "progression": "assist_reduction", "note": "LADDER start high (bar/bench). Progress by LOWERING the surface, not adding reps forever.", "alternatives": [ { "type": "library", "id": "push-ups" }, { "type": "library", "id": "machine-chest-press" } ] },
+          { "ref": { "type": "library", "id": "machine-shoulder-press" }, "sets": 3, "rep_low": 10, "rep_high": 12, "rir": 2, "rest_s": 90, "progression": "double_progression", "note": "Shoulder cap for balance; light.", "alternatives": [ { "type": "library", "id": "lateral-raises" }, { "type": "library", "id": "incline-dumbbell-press" } ] },
+          { "ref": { "type": "library", "id": "lateral-raises" }, "sets": 3, "rep_low": 12, "rep_high": 20, "rir": 1, "rest_s": 60, "progression": "double_progression", "note": "Delt width narrows the waist visually; to failure.", "alternatives": [ { "type": "library", "id": "cable-lateral-raises" }, { "type": "library", "id": "reverse-flyes" } ] },
+          { "ref": { "type": "library", "id": "face-pulls" }, "sets": 2, "rep_low": 15, "rep_high": 20, "rir": 2, "rest_s": 60, "progression": "double_progression", "note": "Posture + rear delt.", "alternatives": [ { "type": "library", "id": "reverse-flyes" }, { "type": "library", "id": "cable-lateral-raises" } ] }
+        ]
+      },
+      {
+        "label": "Lower — Quad + Glute",
+        "split": "legs",
+        "exercises": [
+          { "ref": { "type": "library", "id": "leg-press" }, "sets": 3, "rep_low": 10, "rep_high": 15, "rir": 2, "rest_s": 150, "progression": "double_progression", "note": "Joint-friendly quad/glute; feet high+wide for glute bias.", "alternatives": [ { "type": "library", "id": "hack-squat" }, { "type": "library", "id": "goblet-squat" } ] },
+          { "ref": { "type": "library", "id": "bulgarian-split-squat" }, "sets": 3, "rep_low": 8, "rep_high": 12, "rir": 2, "rest_s": 90, "progression": "double_progression", "note": "Glute-biased lunge; long stride, torso leaned.", "alternatives": [ { "type": "library", "id": "goblet-squat" }, { "type": "library", "id": "leg-press" } ] },
+          { "ref": { "type": "library", "id": "cable-glute-kickback" }, "sets": 3, "rep_low": 12, "rep_high": 15, "rir": 1, "rest_s": 60, "progression": "double_progression", "note": "Glute max isolation; squeeze, no low-back arch.", "alternatives": [ { "type": "library", "id": "cable-pull-through" }, { "type": "library", "id": "banded-glute-bridge" } ] },
+          { "ref": { "type": "library", "id": "hip-abduction-machine" }, "sets": 3, "rep_low": 15, "rep_high": 20, "rir": 1, "rest_s": 60, "progression": "double_progression", "note": "Glute med — hip-dip softening.", "alternatives": [ { "type": "library", "id": "banded-glute-bridge" }, { "type": "library", "id": "cable-glute-kickback" } ] },
+          { "ref": { "type": "library", "id": "leg-extension" }, "sets": 2, "rep_low": 12, "rep_high": 15, "rir": 1, "rest_s": 60, "progression": "double_progression", "note": "Quad detail; last set to failure.", "alternatives": [ { "type": "library", "id": "leg-press" }, { "type": "library", "id": "hack-squat" } ] }
+        ]
+      },
+      {
+        "label": "Upper — Back & Delts",
+        "split": "full",
+        "exercises": [
+          { "ref": { "type": "library", "id": "assisted-pull-up" }, "sets": 3, "rep_low": 5, "rep_high": 10, "rir": 2, "rest_s": 120, "progression": "assist_reduction", "note": "LADDER: track by assistance load FALLING as she leans out. Progress = less help.", "alternatives": [ { "type": "library", "id": "lat-pulldown" }, { "type": "library", "id": "cable-row" } ] },
+          { "ref": { "type": "library", "id": "cable-row" }, "sets": 3, "rep_low": 10, "rep_high": 12, "rir": 2, "rest_s": 90, "progression": "double_progression", "note": "Mid-back thickness, posture.", "alternatives": [ { "type": "library", "id": "dumbbell-row" }, { "type": "library", "id": "lat-pulldown" } ] },
+          { "ref": { "type": "library", "id": "incline-dumbbell-press" }, "sets": 3, "rep_low": 8, "rep_high": 12, "rir": 2, "rest_s": 90, "progression": "double_progression", "note": "Upper-chest lift for the 'lift' look.", "alternatives": [ { "type": "library", "id": "machine-chest-press" }, { "type": "library", "id": "incline-push-up" } ] },
+          { "ref": { "type": "library", "id": "cable-lateral-raises" }, "sets": 3, "rep_low": 12, "rep_high": 20, "rir": 1, "rest_s": 60, "progression": "double_progression", "note": "Width; to failure.", "alternatives": [ { "type": "library", "id": "lateral-raises" }, { "type": "library", "id": "reverse-flyes" } ] },
+          { "ref": { "type": "library", "id": "dumbbell-curl" }, "sets": 2, "rep_low": 10, "rep_high": 12, "rir": 1, "rest_s": 60, "progression": "double_progression", "note": "Arm tone; to failure.", "alternatives": [ { "type": "library", "id": "hammer-curl" }, { "type": "library", "id": "barbell-curl" } ] },
+          { "ref": { "type": "library", "id": "tricep-pushdown" }, "sets": 2, "rep_low": 10, "rep_high": 15, "rir": 1, "rest_s": 60, "progression": "double_progression", "note": "Arm tone; to failure.", "alternatives": [ { "type": "library", "id": "overhead-tricep-extension" }, { "type": "library", "id": "skull-crushers" } ] }
+        ]
+      },
+      {
+        "label": "Glutes + Core",
+        "split": "legs",
+        "exercises": [
+          { "ref": { "type": "library", "id": "hip-thrust" }, "sets": 3, "rep_low": 10, "rep_high": 15, "rir": 2, "rest_s": 120, "progression": "double_progression", "note": "2nd heavy glute session — frequency drives the shape.", "alternatives": [ { "type": "library", "id": "glute-bridge" }, { "type": "library", "id": "cable-pull-through" } ] },
+          { "ref": { "type": "library", "id": "banded-glute-bridge" }, "sets": 3, "rep_low": 15, "rep_high": 20, "rir": 1, "rest_s": 60, "progression": "double_progression", "note": "Glute-med + max; drive knees out against band.", "alternatives": [ { "type": "library", "id": "glute-bridge" }, { "type": "library", "id": "hip-abduction-machine" } ] },
+          { "ref": { "type": "library", "id": "cable-glute-kickback" }, "sets": 3, "rep_low": 12, "rep_high": 15, "rir": 1, "rest_s": 60, "progression": "double_progression", "note": "Per-side glute isolation; to failure.", "alternatives": [ { "type": "library", "id": "cable-pull-through" }, { "type": "library", "id": "banded-glute-bridge" } ] },
+          { "ref": { "type": "library", "id": "hip-abduction-machine" }, "sets": 3, "rep_low": 15, "rep_high": 20, "rir": 1, "rest_s": 60, "progression": "double_progression", "note": "Glute med volume — hip dips.", "alternatives": [ { "type": "library", "id": "banded-glute-bridge" }, { "type": "library", "id": "cable-glute-kickback" } ] },
+          { "ref": { "type": "library", "id": "plank" }, "sets": 3, "rep_low": 30, "rep_high": 45, "rir": 2, "rest_s": 45, "progression": "rep_progression", "note": "Anti-extension core; hold seconds.", "alternatives": [ { "type": "library", "id": "dead-bug" }, { "type": "library", "id": "side-plank" } ] },
+          { "ref": { "type": "library", "id": "cable-woodchop" }, "sets": 2, "rep_low": 12, "rep_high": 15, "rir": 2, "rest_s": 45, "progression": "rep_progression", "note": "Rotational core / waist.", "alternatives": [ { "type": "library", "id": "side-plank" }, { "type": "library", "id": "hanging-leg-raise" } ] }
+        ]
+      }
+    ]
+  },
+  {
+    "version": 1,
+    "phase": 2,
+    "total_phases": 4,
+    "days": [
+      {
+        "label": "Lower — Glute Focus",
+        "split": "legs",
+        "exercises": [
+          { "ref": { "type": "library", "id": "hip-thrust" }, "sets": 4, "rep_low": 8, "rep_high": 12, "rir": 1, "rest_s": 120, "progression": "double_progression", "note": "Load hard — intensity retains muscle in a deficit.", "alternatives": [ { "type": "library", "id": "glute-bridge" }, { "type": "library", "id": "cable-pull-through" } ] },
+          { "ref": { "type": "library", "id": "romanian-deadlift" }, "sets": 3, "rep_low": 8, "rep_high": 12, "rir": 1, "rest_s": 120, "progression": "double_progression", "note": "Heavier hinge; glute+ham.", "alternatives": [ { "type": "library", "id": "cable-pull-through" }, { "type": "library", "id": "leg-curl" } ] },
+          { "ref": { "type": "library", "id": "cable-pull-through" }, "sets": 3, "rep_low": 12, "rep_high": 15, "rir": 0, "rest_s": 75, "progression": "double_progression", "note": "Glute squeeze; to failure.", "alternatives": [ { "type": "library", "id": "glute-bridge" }, { "type": "library", "id": "romanian-deadlift" } ] },
+          { "ref": { "type": "library", "id": "hip-abduction-machine" }, "sets": 4, "rep_low": 15, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute med — 4 sets, to failure.", "alternatives": [ { "type": "library", "id": "banded-glute-bridge" }, { "type": "library", "id": "cable-glute-kickback" } ] },
+          { "ref": { "type": "library", "id": "leg-curl" }, "sets": 3, "rep_low": 10, "rep_high": 15, "rir": 0, "rest_s": 75, "progression": "double_progression", "note": "Hamstring; to failure.", "alternatives": [ { "type": "library", "id": "romanian-deadlift" }, { "type": "library", "id": "good-mornings" } ] }
+        ]
+      },
+      {
+        "label": "Upper — Push & Pull",
+        "split": "full",
+        "exercises": [
+          { "ref": { "type": "library", "id": "machine-chest-press" }, "sets": 4, "rep_low": 8, "rep_high": 12, "rir": 1, "rest_s": 120, "progression": "double_progression", "note": "Heavier press; pec development for the perky look.", "alternatives": [ { "type": "library", "id": "incline-dumbbell-press" }, { "type": "library", "id": "incline-push-up" } ] },
+          { "ref": { "type": "library", "id": "lat-pulldown" }, "sets": 4, "rep_low": 8, "rep_high": 12, "rir": 1, "rest_s": 120, "progression": "double_progression", "note": "Heavier; still feeding the pull-up.", "alternatives": [ { "type": "library", "id": "assisted-pull-up" }, { "type": "library", "id": "cable-row" } ] },
+          { "ref": { "type": "library", "id": "incline-push-up" }, "sets": 3, "rep_low": 8, "rep_high": 15, "rir": 1, "rest_s": 90, "progression": "assist_reduction", "note": "LADDER: lower the surface a notch when 3x15 clean. Toward floor knee push-up.", "alternatives": [ { "type": "library", "id": "push-ups" }, { "type": "library", "id": "machine-chest-press" } ] },
+          { "ref": { "type": "library", "id": "machine-shoulder-press" }, "sets": 3, "rep_low": 8, "rep_high": 12, "rir": 1, "rest_s": 90, "progression": "double_progression", "note": "Progress the press.", "alternatives": [ { "type": "library", "id": "lateral-raises" }, { "type": "library", "id": "incline-dumbbell-press" } ] },
+          { "ref": { "type": "library", "id": "lateral-raises" }, "sets": 4, "rep_low": 12, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Width; 4 sets to failure.", "alternatives": [ { "type": "library", "id": "cable-lateral-raises" }, { "type": "library", "id": "reverse-flyes" } ] },
+          { "ref": { "type": "library", "id": "face-pulls" }, "sets": 2, "rep_low": 15, "rep_high": 20, "rir": 1, "rest_s": 60, "progression": "double_progression", "note": "Posture.", "alternatives": [ { "type": "library", "id": "reverse-flyes" }, { "type": "library", "id": "cable-lateral-raises" } ] }
+        ]
+      },
+      {
+        "label": "Lower — Quad + Glute",
+        "split": "legs",
+        "exercises": [
+          { "ref": { "type": "library", "id": "leg-press" }, "sets": 4, "rep_low": 8, "rep_high": 12, "rir": 1, "rest_s": 150, "progression": "double_progression", "note": "Feet high+wide, deeper; glute-biased strength.", "alternatives": [ { "type": "library", "id": "hack-squat" }, { "type": "library", "id": "bulgarian-split-squat" } ] },
+          { "ref": { "type": "library", "id": "bulgarian-split-squat" }, "sets": 3, "rep_low": 8, "rep_high": 12, "rir": 1, "rest_s": 90, "progression": "double_progression", "note": "Load with DBs; glute stretch emphasis.", "alternatives": [ { "type": "library", "id": "goblet-squat" }, { "type": "library", "id": "leg-press" } ] },
+          { "ref": { "type": "library", "id": "cable-glute-kickback" }, "sets": 4, "rep_low": 12, "rep_high": 15, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute max isolation; to failure.", "alternatives": [ { "type": "library", "id": "cable-pull-through" }, { "type": "library", "id": "banded-glute-bridge" } ] },
+          { "ref": { "type": "library", "id": "hip-abduction-machine" }, "sets": 4, "rep_low": 15, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute med.", "alternatives": [ { "type": "library", "id": "banded-glute-bridge" }, { "type": "library", "id": "cable-glute-kickback" } ] },
+          { "ref": { "type": "library", "id": "leg-extension" }, "sets": 3, "rep_low": 12, "rep_high": 15, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Quad; to failure.", "alternatives": [ { "type": "library", "id": "leg-press" }, { "type": "library", "id": "hack-squat" } ] }
+        ]
+      },
+      {
+        "label": "Upper — Back & Delts",
+        "split": "full",
+        "exercises": [
+          { "ref": { "type": "library", "id": "assisted-pull-up" }, "sets": 4, "rep_low": 5, "rep_high": 10, "rir": 1, "rest_s": 120, "progression": "assist_reduction", "note": "LADDER: reduce assistance as bodyweight drops — the win metric.", "alternatives": [ { "type": "library", "id": "lat-pulldown" }, { "type": "library", "id": "cable-row" } ] },
+          { "ref": { "type": "library", "id": "cable-row" }, "sets": 4, "rep_low": 10, "rep_high": 12, "rir": 1, "rest_s": 90, "progression": "double_progression", "note": "Back thickness, posture.", "alternatives": [ { "type": "library", "id": "dumbbell-row" }, { "type": "library", "id": "t-bar-row" } ] },
+          { "ref": { "type": "library", "id": "incline-dumbbell-press" }, "sets": 3, "rep_low": 8, "rep_high": 12, "rir": 1, "rest_s": 90, "progression": "double_progression", "note": "Upper-chest lift.", "alternatives": [ { "type": "library", "id": "machine-chest-press" }, { "type": "library", "id": "incline-push-up" } ] },
+          { "ref": { "type": "library", "id": "cable-lateral-raises" }, "sets": 4, "rep_low": 12, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Width; to failure.", "alternatives": [ { "type": "library", "id": "lateral-raises" }, { "type": "library", "id": "reverse-flyes" } ] },
+          { "ref": { "type": "library", "id": "hammer-curl" }, "sets": 3, "rep_low": 10, "rep_high": 12, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Arm tone; to failure.", "alternatives": [ { "type": "library", "id": "dumbbell-curl" }, { "type": "library", "id": "barbell-curl" } ] },
+          { "ref": { "type": "library", "id": "overhead-tricep-extension" }, "sets": 3, "rep_low": 10, "rep_high": 15, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Arm tone; to failure.", "alternatives": [ { "type": "library", "id": "tricep-pushdown" }, { "type": "library", "id": "skull-crushers" } ] }
+        ]
+      },
+      {
+        "label": "Glutes + Core",
+        "split": "legs",
+        "exercises": [
+          { "ref": { "type": "library", "id": "hip-thrust" }, "sets": 4, "rep_low": 8, "rep_high": 12, "rir": 1, "rest_s": 120, "progression": "double_progression", "note": "2nd heavy glute day; pause lockout.", "alternatives": [ { "type": "library", "id": "glute-bridge" }, { "type": "library", "id": "cable-pull-through" } ] },
+          { "ref": { "type": "library", "id": "banded-glute-bridge" }, "sets": 3, "rep_low": 15, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute med+max burnout.", "alternatives": [ { "type": "library", "id": "glute-bridge" }, { "type": "library", "id": "hip-abduction-machine" } ] },
+          { "ref": { "type": "library", "id": "cable-glute-kickback" }, "sets": 4, "rep_low": 12, "rep_high": 15, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute isolation; to failure.", "alternatives": [ { "type": "library", "id": "cable-pull-through" }, { "type": "library", "id": "banded-glute-bridge" } ] },
+          { "ref": { "type": "library", "id": "hip-abduction-machine" }, "sets": 4, "rep_low": 15, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute med volume.", "alternatives": [ { "type": "library", "id": "banded-glute-bridge" }, { "type": "library", "id": "cable-glute-kickback" } ] },
+          { "ref": { "type": "library", "id": "hanging-leg-raise" }, "sets": 3, "rep_low": 8, "rep_high": 15, "rir": 1, "rest_s": 60, "progression": "rep_progression", "note": "Core; posterior tilt, no swing.", "alternatives": [ { "type": "library", "id": "plank" }, { "type": "library", "id": "cable-woodchop" } ] },
+          { "ref": { "type": "library", "id": "cable-woodchop" }, "sets": 3, "rep_low": 12, "rep_high": 15, "rir": 1, "rest_s": 45, "progression": "rep_progression", "note": "Rotational core / waist.", "alternatives": [ { "type": "library", "id": "side-plank" }, { "type": "library", "id": "plank" } ] }
+        ]
+      }
+    ]
+  },
+  {
+    "version": 1,
+    "phase": 3,
+    "total_phases": 4,
+    "days": [
+      {
+        "label": "Lower — Glute Focus",
+        "split": "legs",
+        "exercises": [
+          { "ref": { "type": "library", "id": "hip-thrust" }, "sets": 4, "rep_low": 6, "rep_high": 10, "rir": 1, "rest_s": 150, "progression": "load_progression", "note": "Keep load HIGH (retention); slightly fewer reps as recovery dips.", "alternatives": [ { "type": "library", "id": "glute-bridge" }, { "type": "library", "id": "cable-pull-through" } ] },
+          { "ref": { "type": "library", "id": "romanian-deadlift" }, "sets": 3, "rep_low": 8, "rep_high": 10, "rir": 1, "rest_s": 120, "progression": "double_progression", "note": "Heavy hinge held; auto-regulate on low-energy days.", "alternatives": [ { "type": "library", "id": "cable-pull-through" }, { "type": "library", "id": "leg-curl" } ] },
+          { "ref": { "type": "library", "id": "cable-pull-through" }, "sets": 3, "rep_low": 12, "rep_high": 15, "rir": 0, "rest_s": 75, "progression": "double_progression", "note": "Glute squeeze.", "alternatives": [ { "type": "library", "id": "glute-bridge" }, { "type": "library", "id": "romanian-deadlift" } ] },
+          { "ref": { "type": "library", "id": "hip-abduction-machine" }, "sets": 3, "rep_low": 15, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute med (trimmed to 3 sets — volume down, effort up).", "alternatives": [ { "type": "library", "id": "banded-glute-bridge" }, { "type": "library", "id": "cable-glute-kickback" } ] },
+          { "ref": { "type": "library", "id": "leg-curl" }, "sets": 3, "rep_low": 10, "rep_high": 12, "rir": 0, "rest_s": 75, "progression": "double_progression", "note": "Hamstring.", "alternatives": [ { "type": "library", "id": "romanian-deadlift" }, { "type": "library", "id": "good-mornings" } ] }
+        ]
+      },
+      {
+        "label": "Upper — Push & Pull",
+        "split": "full",
+        "exercises": [
+          { "ref": { "type": "library", "id": "machine-chest-press" }, "sets": 4, "rep_low": 6, "rep_high": 10, "rir": 1, "rest_s": 120, "progression": "load_progression", "note": "Heavier, fewer reps; hold pressing strength.", "alternatives": [ { "type": "library", "id": "incline-dumbbell-press" }, { "type": "library", "id": "incline-push-up" } ] },
+          { "ref": { "type": "library", "id": "lat-pulldown" }, "sets": 4, "rep_low": 8, "rep_high": 10, "rir": 1, "rest_s": 120, "progression": "load_progression", "note": "Hold pulling strength.", "alternatives": [ { "type": "library", "id": "assisted-pull-up" }, { "type": "library", "id": "cable-row" } ] },
+          { "ref": { "type": "library", "id": "incline-push-up" }, "sets": 3, "rep_low": 8, "rep_high": 15, "rir": 1, "rest_s": 90, "progression": "assist_reduction", "note": "LADDER continues — she should be near/at floor push-ups now.", "alternatives": [ { "type": "library", "id": "push-ups" }, { "type": "library", "id": "machine-chest-press" } ] },
+          { "ref": { "type": "library", "id": "lateral-raises" }, "sets": 4, "rep_low": 12, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Width held high (cheap fatigue, big visual payoff).", "alternatives": [ { "type": "library", "id": "cable-lateral-raises" }, { "type": "library", "id": "reverse-flyes" } ] },
+          { "ref": { "type": "library", "id": "face-pulls" }, "sets": 2, "rep_low": 15, "rep_high": 20, "rir": 1, "rest_s": 60, "progression": "double_progression", "note": "Posture.", "alternatives": [ { "type": "library", "id": "reverse-flyes" }, { "type": "library", "id": "cable-lateral-raises" } ] }
+        ]
+      },
+      {
+        "label": "Lower — Quad + Glute",
+        "split": "legs",
+        "exercises": [
+          { "ref": { "type": "library", "id": "leg-press" }, "sets": 4, "rep_low": 6, "rep_high": 10, "rir": 1, "rest_s": 150, "progression": "load_progression", "note": "Glute-biased stance; hold strength.", "alternatives": [ { "type": "library", "id": "hack-squat" }, { "type": "library", "id": "bulgarian-split-squat" } ] },
+          { "ref": { "type": "library", "id": "bulgarian-split-squat" }, "sets": 3, "rep_low": 8, "rep_high": 10, "rir": 1, "rest_s": 90, "progression": "double_progression", "note": "Glute stretch under load.", "alternatives": [ { "type": "library", "id": "goblet-squat" }, { "type": "library", "id": "leg-press" } ] },
+          { "ref": { "type": "library", "id": "cable-glute-kickback" }, "sets": 3, "rep_low": 12, "rep_high": 15, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute isolation.", "alternatives": [ { "type": "library", "id": "cable-pull-through" }, { "type": "library", "id": "banded-glute-bridge" } ] },
+          { "ref": { "type": "library", "id": "hip-abduction-machine" }, "sets": 3, "rep_low": 15, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute med.", "alternatives": [ { "type": "library", "id": "banded-glute-bridge" }, { "type": "library", "id": "cable-glute-kickback" } ] },
+          { "ref": { "type": "library", "id": "leg-extension" }, "sets": 2, "rep_low": 12, "rep_high": 15, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Quad; to failure.", "alternatives": [ { "type": "library", "id": "leg-press" }, { "type": "library", "id": "hack-squat" } ] }
+        ]
+      },
+      {
+        "label": "Upper — Back & Delts",
+        "split": "full",
+        "exercises": [
+          { "ref": { "type": "library", "id": "assisted-pull-up" }, "sets": 4, "rep_low": 4, "rep_high": 8, "rir": 1, "rest_s": 120, "progression": "assist_reduction", "note": "LADDER — assistance should be visibly lower than Phase 1.", "alternatives": [ { "type": "library", "id": "lat-pulldown" }, { "type": "library", "id": "cable-row" } ] },
+          { "ref": { "type": "library", "id": "cable-row" }, "sets": 4, "rep_low": 8, "rep_high": 12, "rir": 1, "rest_s": 90, "progression": "double_progression", "note": "Back thickness / posture.", "alternatives": [ { "type": "library", "id": "dumbbell-row" }, { "type": "library", "id": "t-bar-row" } ] },
+          { "ref": { "type": "library", "id": "incline-dumbbell-press" }, "sets": 3, "rep_low": 8, "rep_high": 12, "rir": 1, "rest_s": 90, "progression": "double_progression", "note": "Upper chest.", "alternatives": [ { "type": "library", "id": "machine-chest-press" }, { "type": "library", "id": "incline-push-up" } ] },
+          { "ref": { "type": "library", "id": "cable-lateral-raises" }, "sets": 4, "rep_low": 12, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Width.", "alternatives": [ { "type": "library", "id": "lateral-raises" }, { "type": "library", "id": "reverse-flyes" } ] },
+          { "ref": { "type": "library", "id": "hammer-curl" }, "sets": 2, "rep_low": 10, "rep_high": 12, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Arm tone.", "alternatives": [ { "type": "library", "id": "dumbbell-curl" }, { "type": "library", "id": "barbell-curl" } ] },
+          { "ref": { "type": "library", "id": "tricep-pushdown" }, "sets": 2, "rep_low": 10, "rep_high": 15, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Arm tone.", "alternatives": [ { "type": "library", "id": "overhead-tricep-extension" }, { "type": "library", "id": "skull-crushers" } ] }
+        ]
+      },
+      {
+        "label": "Glutes + Core (deload wk13)",
+        "split": "legs",
+        "exercises": [
+          { "ref": { "type": "library", "id": "hip-thrust" }, "sets": 3, "rep_low": 8, "rep_high": 12, "rir": 2, "rest_s": 120, "progression": "load_progression", "note": "WK13 DELOAD (align to diet-break): drop to 2 sets @RIR3-4, keep load.", "alternatives": [ { "type": "library", "id": "glute-bridge" }, { "type": "library", "id": "cable-pull-through" } ] },
+          { "ref": { "type": "library", "id": "cable-glute-kickback" }, "sets": 3, "rep_low": 12, "rep_high": 15, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute isolation.", "alternatives": [ { "type": "library", "id": "cable-pull-through" }, { "type": "library", "id": "banded-glute-bridge" } ] },
+          { "ref": { "type": "library", "id": "hip-abduction-machine" }, "sets": 3, "rep_low": 15, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute med.", "alternatives": [ { "type": "library", "id": "banded-glute-bridge" }, { "type": "library", "id": "cable-glute-kickback" } ] },
+          { "ref": { "type": "library", "id": "plank" }, "sets": 3, "rep_low": 40, "rep_high": 60, "rir": 2, "rest_s": 45, "progression": "rep_progression", "note": "Core hold.", "alternatives": [ { "type": "library", "id": "dead-bug" }, { "type": "library", "id": "side-plank" } ] },
+          { "ref": { "type": "library", "id": "cable-woodchop" }, "sets": 2, "rep_low": 12, "rep_high": 15, "rir": 1, "rest_s": 45, "progression": "rep_progression", "note": "Waist/rotation.", "alternatives": [ { "type": "library", "id": "side-plank" }, { "type": "library", "id": "hanging-leg-raise" } ] }
+        ]
+      }
+    ]
+  },
+  {
+    "version": 1,
+    "phase": 4,
+    "total_phases": 4,
+    "days": [
+      {
+        "label": "Lower — Glute Peak",
+        "split": "legs",
+        "exercises": [
+          { "ref": { "type": "library", "id": "hip-thrust" }, "sets": 4, "rep_low": 6, "rep_high": 10, "rir": 1, "rest_s": 150, "progression": "load_progression", "note": "Peak glute strength — muscle you keep is the shape she sees.", "alternatives": [ { "type": "library", "id": "glute-bridge" }, { "type": "library", "id": "cable-pull-through" } ] },
+          { "ref": { "type": "library", "id": "cable-pull-through" }, "sets": 3, "rep_low": 12, "rep_high": 15, "rir": 0, "rest_s": 75, "progression": "double_progression", "note": "Glute squeeze / pump for photos.", "alternatives": [ { "type": "library", "id": "glute-bridge" }, { "type": "library", "id": "romanian-deadlift" } ] },
+          { "ref": { "type": "library", "id": "hip-abduction-machine" }, "sets": 4, "rep_low": 15, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute med — hip-dip look for the dress.", "alternatives": [ { "type": "library", "id": "banded-glute-bridge" }, { "type": "library", "id": "cable-glute-kickback" } ] },
+          { "ref": { "type": "library", "id": "leg-curl" }, "sets": 3, "rep_low": 10, "rep_high": 12, "rir": 0, "rest_s": 75, "progression": "double_progression", "note": "Hamstring — ties the glute-ham line.", "alternatives": [ { "type": "library", "id": "romanian-deadlift" }, { "type": "library", "id": "good-mornings" } ] }
+        ]
+      },
+      {
+        "label": "Upper — Push & Pull",
+        "split": "full",
+        "exercises": [
+          { "ref": { "type": "library", "id": "machine-chest-press" }, "sets": 4, "rep_low": 6, "rep_high": 10, "rir": 1, "rest_s": 120, "progression": "load_progression", "note": "Hold pressing strength; upper chest / perky.", "alternatives": [ { "type": "library", "id": "incline-dumbbell-press" }, { "type": "library", "id": "incline-push-up" } ] },
+          { "ref": { "type": "library", "id": "lat-pulldown" }, "sets": 3, "rep_low": 8, "rep_high": 12, "rir": 1, "rest_s": 120, "progression": "double_progression", "note": "Back width frames the waist.", "alternatives": [ { "type": "library", "id": "assisted-pull-up" }, { "type": "library", "id": "cable-row" } ] },
+          { "ref": { "type": "library", "id": "push-ups" }, "sets": 3, "rep_low": 3, "rep_high": 12, "rir": 1, "rest_s": 90, "progression": "double_progression", "note": "LADDER PAYOFF — test floor push-ups vs the knee-only start.", "alternatives": [ { "type": "library", "id": "incline-push-up" }, { "type": "library", "id": "machine-chest-press" } ] },
+          { "ref": { "type": "library", "id": "lateral-raises" }, "sets": 4, "rep_low": 12, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Shoulders-to-waist ratio for the peak look.", "alternatives": [ { "type": "library", "id": "cable-lateral-raises" }, { "type": "library", "id": "reverse-flyes" } ] },
+          { "ref": { "type": "library", "id": "face-pulls" }, "sets": 2, "rep_low": 15, "rep_high": 20, "rir": 1, "rest_s": 60, "progression": "double_progression", "note": "Posture on the day.", "alternatives": [ { "type": "library", "id": "reverse-flyes" }, { "type": "library", "id": "cable-lateral-raises" } ] }
+        ]
+      },
+      {
+        "label": "Lower — Quad + Glute",
+        "split": "legs",
+        "exercises": [
+          { "ref": { "type": "library", "id": "leg-press" }, "sets": 3, "rep_low": 8, "rep_high": 12, "rir": 1, "rest_s": 150, "progression": "double_progression", "note": "Glute-biased; maintain lower-body muscle.", "alternatives": [ { "type": "library", "id": "hack-squat" }, { "type": "library", "id": "bulgarian-split-squat" } ] },
+          { "ref": { "type": "library", "id": "bulgarian-split-squat" }, "sets": 3, "rep_low": 8, "rep_high": 12, "rir": 1, "rest_s": 90, "progression": "double_progression", "note": "Glute stretch, balance.", "alternatives": [ { "type": "library", "id": "goblet-squat" }, { "type": "library", "id": "leg-press" } ] },
+          { "ref": { "type": "library", "id": "cable-glute-kickback" }, "sets": 3, "rep_low": 12, "rep_high": 15, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute isolation / pump.", "alternatives": [ { "type": "library", "id": "cable-pull-through" }, { "type": "library", "id": "banded-glute-bridge" } ] },
+          { "ref": { "type": "library", "id": "hip-abduction-machine" }, "sets": 4, "rep_low": 15, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute med volume.", "alternatives": [ { "type": "library", "id": "banded-glute-bridge" }, { "type": "library", "id": "cable-glute-kickback" } ] }
+        ]
+      },
+      {
+        "label": "Upper — Back & Delts",
+        "split": "full",
+        "exercises": [
+          { "ref": { "type": "library", "id": "assisted-pull-up" }, "sets": 3, "rep_low": 4, "rep_high": 8, "rir": 1, "rest_s": 120, "progression": "assist_reduction", "note": "LADDER — lowest assistance of the whole plan; celebrate the drop.", "alternatives": [ { "type": "library", "id": "lat-pulldown" }, { "type": "library", "id": "cable-row" } ] },
+          { "ref": { "type": "library", "id": "cable-row" }, "sets": 3, "rep_low": 10, "rep_high": 12, "rir": 1, "rest_s": 90, "progression": "double_progression", "note": "Posture / thickness for photos.", "alternatives": [ { "type": "library", "id": "dumbbell-row" }, { "type": "library", "id": "t-bar-row" } ] },
+          { "ref": { "type": "library", "id": "cable-lateral-raises" }, "sets": 4, "rep_low": 12, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Width.", "alternatives": [ { "type": "library", "id": "lateral-raises" }, { "type": "library", "id": "reverse-flyes" } ] },
+          { "ref": { "type": "library", "id": "hammer-curl" }, "sets": 2, "rep_low": 10, "rep_high": 12, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Arm tone.", "alternatives": [ { "type": "library", "id": "dumbbell-curl" }, { "type": "library", "id": "barbell-curl" } ] },
+          { "ref": { "type": "library", "id": "tricep-pushdown" }, "sets": 2, "rep_low": 10, "rep_high": 15, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Arm tone.", "alternatives": [ { "type": "library", "id": "overhead-tricep-extension" }, { "type": "library", "id": "skull-crushers" } ] }
+        ]
+      },
+      {
+        "label": "Glutes + Core (peak/coast)",
+        "split": "legs",
+        "exercises": [
+          { "ref": { "type": "library", "id": "hip-thrust" }, "sets": 3, "rep_low": 8, "rep_high": 12, "rir": 1, "rest_s": 120, "progression": "load_progression", "note": "Wk16-18 normal; wk19+ coast to Feb15 — keep lifting light, don't add fatigue.", "alternatives": [ { "type": "library", "id": "glute-bridge" }, { "type": "library", "id": "cable-pull-through" } ] },
+          { "ref": { "type": "library", "id": "banded-glute-bridge" }, "sets": 3, "rep_low": 15, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute pump.", "alternatives": [ { "type": "library", "id": "glute-bridge" }, { "type": "library", "id": "hip-abduction-machine" } ] },
+          { "ref": { "type": "library", "id": "hip-abduction-machine" }, "sets": 3, "rep_low": 15, "rep_high": 20, "rir": 0, "rest_s": 60, "progression": "double_progression", "note": "Glute med.", "alternatives": [ { "type": "library", "id": "banded-glute-bridge" }, { "type": "library", "id": "cable-glute-kickback" } ] },
+          { "ref": { "type": "library", "id": "plank" }, "sets": 3, "rep_low": 45, "rep_high": 60, "rir": 2, "rest_s": 45, "progression": "rep_progression", "note": "Core.", "alternatives": [ { "type": "library", "id": "dead-bug" }, { "type": "library", "id": "side-plank" } ] },
+          { "ref": { "type": "library", "id": "cable-woodchop" }, "sets": 2, "rep_low": 12, "rep_high": 15, "rir": 1, "rest_s": 45, "progression": "rep_progression", "note": "Waist/rotation.", "alternatives": [ { "type": "library", "id": "side-plank" }, { "type": "library", "id": "hanging-leg-raise" } ] }
+        ]
+      }
+    ]
+  }
+]

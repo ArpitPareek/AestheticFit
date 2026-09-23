@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import type { AssessmentResponses } from './types'
-import type { GeneratedWorkoutPlan } from '../../lib/types'
+import type { WorkoutPlanRow } from '../workout/planGenerator'
 
 interface Profile {
   id: string
@@ -22,20 +22,15 @@ interface Assessment {
   created_at: string
 }
 
-interface ActivePlan {
-  id: string
-  plan_name: string
-  plan_data: GeneratedWorkoutPlan
-  phase: number
-  total_phases: number
-  start_date: string
-  is_active: boolean
-}
+const PLAN_ROW_SELECT =
+  'id, plan_name, plan_data, phase, total_phases, start_date, is_active, plan_source, sort_order, phase_weeks'
 
 interface ProfileState {
   profile: Profile | null
   assessment: Assessment | null
-  activePlan: ActivePlan | null
+  activePlan: WorkoutPlanRow | null
+  /** Latest generated-but-not-yet-approved plan (is_active=false), if any. */
+  draftPlan: WorkoutPlanRow | null
   hasCompletedAssessment: boolean
   hasPlan: boolean
   loading: boolean
@@ -48,7 +43,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [assessment, setAssessment] = useState<Assessment | null>(null)
-  const [activePlan, setActivePlan] = useState<ActivePlan | null>(null)
+  const [activePlan, setActivePlan] = useState<WorkoutPlanRow | null>(null)
+  const [draftPlan, setDraftPlan] = useState<WorkoutPlanRow | null>(null)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -56,13 +52,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       setProfile(null)
       setAssessment(null)
       setActivePlan(null)
+      setDraftPlan(null)
       setLoading(false)
       return
     }
 
     setLoading(true)
 
-    const [profileRes, assessmentRes, planRes] = await Promise.all([
+    const [profileRes, assessmentRes, activePlanRes, draftPlanRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       supabase
         .from('assessments')
@@ -71,17 +68,21 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         .order('version', { ascending: false })
         .limit(1)
         .maybeSingle(),
+      supabase.from('workout_plans').select(PLAN_ROW_SELECT).eq('user_id', user.id).eq('is_active', true).maybeSingle(),
       supabase
         .from('workout_plans')
-        .select('*')
+        .select(PLAN_ROW_SELECT)
         .eq('user_id', user.id)
-        .eq('is_active', true)
+        .eq('is_active', false)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle(),
     ])
 
     setProfile(profileRes.data ?? null)
     setAssessment(assessmentRes.data ?? null)
-    setActivePlan(planRes.data ?? null)
+    setActivePlan((activePlanRes.data as WorkoutPlanRow) ?? null)
+    setDraftPlan((draftPlanRes.data as WorkoutPlanRow) ?? null)
     setLoading(false)
   }, [user])
 
@@ -93,7 +94,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const hasPlan = activePlan != null
 
   return (
-    <ProfileContext.Provider value={{ profile, assessment, activePlan, hasCompletedAssessment, hasPlan, loading, reload: load }}>
+    <ProfileContext.Provider
+      value={{ profile, assessment, activePlan, draftPlan, hasCompletedAssessment, hasPlan, loading, reload: load }}
+    >
       {children}
     </ProfileContext.Provider>
   )
