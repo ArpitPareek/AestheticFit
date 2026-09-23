@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
+import { localTodayISO } from '../../lib/utils'
 
 interface DashboardSnapshot {
   latestWeight: number | null
@@ -25,7 +26,7 @@ export function useDashboardData() {
   })
   const [loading, setLoading] = useState(true)
 
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = localTodayISO()
 
   const load = useCallback(async () => {
     if (!user) return

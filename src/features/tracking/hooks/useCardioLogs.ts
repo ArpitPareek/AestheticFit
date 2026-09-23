@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
+import { localTodayISO, localDateISO } from '../../../lib/utils'
 
 export type CardioIntensity = 'zone2' | 'low' | 'moderate' | 'high'
 
@@ -18,10 +19,7 @@ function isoWeekBounds(d: Date): { start: string; end: string } {
   const diff = (day === 0 ? -6 : 1) - day
   const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() + diff)
   const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6)
-  return {
-    start: mon.toISOString().slice(0, 10),
-    end: sun.toISOString().slice(0, 10),
-  }
+  return { start: localDateISO(mon), end: localDateISO(sun) }
 }
 
 export function useCardioLogs() {
@@ -30,8 +28,7 @@ export function useCardioLogs() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  const today = new Date()
-  const { start: weekStart, end: weekEnd } = isoWeekBounds(today)
+  const { start: weekStart, end: weekEnd } = isoWeekBounds(new Date())
 
   const load = useCallback(async () => {
     if (!user) return
@@ -59,7 +56,7 @@ export function useCardioLogs() {
     setSaving(true)
     const { error } = await supabase.from('cardio_logs').insert({
       user_id: user.id,
-      log_date: today.toISOString().slice(0, 10),
+      log_date: localTodayISO(),
       type: entry.type,
       minutes: entry.minutes,
       intensity: entry.intensity,

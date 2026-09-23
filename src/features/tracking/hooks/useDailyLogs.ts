@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
+import { localTodayISO } from '../../../lib/utils'
 
 export interface DailyLog {
   id: string
@@ -16,7 +17,7 @@ export function useDailyLogs() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localTodayISO()
 
   const load = useCallback(async () => {
     if (!user) return

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
+import { localTodayISO } from '../../../lib/utils'
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 
@@ -29,31 +30,40 @@ export function useDailyNutrition() {
   const { user } = useAuth()
   const [meals, setMeals] = useState<MealLogEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const todayRef = useRef(new Date().toISOString().split('T')[0])
+  // Captured once at mount: prevents date from flipping mid-session.
+  const todayRef = useRef(localTodayISO())
   const today = todayRef.current
 
-  useEffect(() => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
-    let cancelled = false
+  const fetchMeals = useCallback(async () => {
+    if (!user) { setLoading(false); return }
     setLoading(true)
-
-    supabase
+    const { data } = await supabase
       .from('meal_logs')
       .select('id, meal_type, food_id, food_name, servings, calories, protein_g, carbs_g, fat_g')
       .eq('user_id', user.id)
       .eq('log_date', today)
       .order('created_at', { ascending: true })
-      .then(({ data }) => {
-        if (cancelled) return
-        if (data) setMeals(data as MealLogEntry[])
-        setLoading(false)
-      })
-
-    return () => { cancelled = true }
+    if (data) setMeals(data as MealLogEntry[])
+    setLoading(false)
   }, [user, today])
+
+  useEffect(() => {
+    fetchMeals()
+  }, [fetchMeals])
+
+  // Realtime: re-fetch whenever any meal_log row changes for this user+date.
+  useEffect(() => {
+    if (!user) return
+    const channel = supabase
+      .channel(`meal_logs:${user.id}:${today}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'meal_logs', filter: `user_id=eq.${user.id}` },
+        () => { fetchMeals() },
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [user, today, fetchMeals])
 
   const addMeal = useCallback(
     async (entry: {
@@ -116,5 +126,5 @@ export function useDailyNutrition() {
     [meals],
   )
 
-  return { meals, totals, mealsByType, addMeal, removeMeal, loading, reload: () => {} }
+  return { meals, totals, mealsByType, addMeal, removeMeal, loading, reload: fetchMeals }
 }

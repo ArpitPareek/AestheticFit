@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
+import { localTodayISO } from '../../../lib/utils'
 import type { ExerciseSet } from '../../../lib/types'
 
 
@@ -12,14 +13,6 @@ interface WorkoutLoggerState {
   swapMap: Record<string, string>
   saving: boolean
   finished: boolean
-}
-
-// Local-timezone calendar date (yyyy-mm-dd). NOT toISOString() — that is UTC and
-// would roll the date backward for late-evening logging in +offset timezones
-// (e.g. IST), writing a workout to the wrong day.
-function localTodayISO(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 /**
