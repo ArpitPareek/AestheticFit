@@ -2,20 +2,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
 import { localTodayISO } from '../../../lib/utils'
+import type { InsertTables, Tables } from '../../../types/supabase'
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 
-export interface MealLogEntry {
-  id: string
-  meal_type: MealType
-  food_id: string | null
-  food_name: string
-  servings: number
-  calories: number
-  protein_g: number
-  carbs_g: number
-  fat_g: number
-}
+const MEAL_LOG_SELECT = 'id, meal_type, food_id, food_name, servings, calories, protein_g, carbs_g, fat_g' as const
+
+export type MealLogEntry = Pick<
+  Tables<'meal_logs'>,
+  'id' | 'food_id' | 'food_name' | 'servings' | 'calories' | 'protein_g' | 'carbs_g' | 'fat_g'
+> & { meal_type: MealType }
+
+type NewMealLogEntry = Pick<
+  InsertTables<'meal_logs'>,
+  'food_id' | 'food_name' | 'servings' | 'calories' | 'protein_g' | 'carbs_g' | 'fat_g'
+> & { meal_type: MealType }
 
 export interface DailyTotals {
   calories: number
@@ -39,7 +40,7 @@ export function useDailyNutrition() {
     setLoading(true)
     const { data } = await supabase
       .from('meal_logs')
-      .select('id, meal_type, food_id, food_name, servings, calories, protein_g, carbs_g, fat_g')
+      .select(MEAL_LOG_SELECT)
       .eq('user_id', user.id)
       .eq('log_date', today)
       .order('created_at', { ascending: true })
@@ -66,16 +67,7 @@ export function useDailyNutrition() {
   }, [user, today, fetchMeals])
 
   const addMeal = useCallback(
-    async (entry: {
-      meal_type: MealType
-      food_id: string | null
-      food_name: string
-      servings: number
-      calories: number
-      protein_g: number
-      carbs_g: number
-      fat_g: number
-    }) => {
+    async (entry: NewMealLogEntry) => {
       if (!user) return
 
       const { data, error } = await supabase
@@ -85,7 +77,7 @@ export function useDailyNutrition() {
           log_date: today,
           ...entry,
         })
-        .select('id, meal_type, food_id, food_name, servings, calories, protein_g, carbs_g, fat_g')
+        .select(MEAL_LOG_SELECT)
         .single()
 
       if (!error && data) {
