@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { AuthProvider, useAuth } from './features/auth/AuthContext'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
 import { ProfileProvider, useProfile } from './features/profile/ProfileContext'
@@ -28,8 +28,14 @@ function TabSkeleton() {
 
 function AppContent() {
   const { user } = useAuth()
-  const { hasCompletedAssessment, hasPlan, assessment, draftPlan, loading, reload } = useProfile()
+  const { hasCompletedAssessment, hasPlan, assessment, draftPlan, loading, reload, loadDraftPlan } = useProfile()
   const [activeTab, setActiveTab] = useState<TabId>('today')
+
+  useEffect(() => {
+    if (!loading && hasCompletedAssessment && !hasPlan) {
+      loadDraftPlan()
+    }
+  }, [loading, hasCompletedAssessment, hasPlan, loadDraftPlan])
 
   if (loading) {
     return (

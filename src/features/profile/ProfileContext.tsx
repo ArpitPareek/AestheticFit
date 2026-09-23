@@ -35,6 +35,8 @@ interface ProfileState {
   hasPlan: boolean
   loading: boolean
   reload: () => Promise<void>
+  /** Fetches the latest inactive plan on demand (call only when !hasPlan). */
+  loadDraftPlan: () => Promise<void>
 }
 
 const ProfileContext = createContext<ProfileState | undefined>(undefined)
@@ -59,7 +61,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
     setLoading(true)
 
-    const [profileRes, assessmentRes, activePlanRes, draftPlanRes] = await Promise.all([
+    const [profileRes, assessmentRes, activePlanRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       supabase
         .from('assessments')
@@ -69,21 +71,26 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         .limit(1)
         .maybeSingle(),
       supabase.from('workout_plans').select(PLAN_ROW_SELECT).eq('user_id', user.id).eq('is_active', true).maybeSingle(),
-      supabase
-        .from('workout_plans')
-        .select(PLAN_ROW_SELECT)
-        .eq('user_id', user.id)
-        .eq('is_active', false)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
     ])
 
     setProfile(profileRes.data ?? null)
     setAssessment(assessmentRes.data ?? null)
     setActivePlan((activePlanRes.data as WorkoutPlanRow) ?? null)
-    setDraftPlan((draftPlanRes.data as WorkoutPlanRow) ?? null)
+    setDraftPlan(null)
     setLoading(false)
+  }, [user])
+
+  const loadDraftPlan = useCallback(async () => {
+    if (!user) return
+    const { data } = await supabase
+      .from('workout_plans')
+      .select(PLAN_ROW_SELECT)
+      .eq('user_id', user.id)
+      .eq('is_active', false)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    setDraftPlan((data as WorkoutPlanRow) ?? null)
   }, [user])
 
   useEffect(() => {
@@ -95,7 +102,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   return (
     <ProfileContext.Provider
-      value={{ profile, assessment, activePlan, draftPlan, hasCompletedAssessment, hasPlan, loading, reload: load }}
+      value={{ profile, assessment, activePlan, draftPlan, hasCompletedAssessment, hasPlan, loading, reload: load, loadDraftPlan }}
     >
       {children}
     </ProfileContext.Provider>
