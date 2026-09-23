@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import { EMPTY_ASSESSMENT, STEP_LABELS, type AssessmentResponses } from './types'
+import type { Json } from '../../types/supabase'
 import { StepBasics } from './steps/StepBasics'
 import { StepGoals } from './steps/StepGoals'
 import { StepTraining } from './steps/StepTraining'
@@ -39,13 +40,13 @@ export function AssessmentForm({ existingId, existingData, version = 1, onComple
         if (assessmentId) {
           const { error: err } = await supabase
             .from('assessments')
-            .update({ responses })
+            .update({ responses: responses as unknown as Json })
             .eq('id', assessmentId)
           if (err) throw err
         } else {
           const { data: row, error: err } = await supabase
             .from('assessments')
-            .insert({ user_id: user.id, version, responses })
+            .insert({ user_id: user.id, version, responses: responses as unknown as Json })
             .select('id')
             .single()
           if (err) throw err
@@ -75,7 +76,7 @@ export function AssessmentForm({ existingId, existingData, version = 1, onComple
     try {
       const { error: err } = await supabase
         .from('assessments')
-        .update({ responses: data, completed_at: new Date().toISOString() })
+        .update({ responses: data as unknown as Json, completed_at: new Date().toISOString() })
         .eq('id', assessmentId)
       if (err) throw err
 

@@ -64,12 +64,12 @@ export interface Database {
           created_at: string
         }
         Insert: {
-          id: string
+          id?: string
           user_id: string
           version: number
           responses: Json
           completed_at?: string
-          created_at: string
+          created_at?: string
         }
         Update: {
           id?: string
