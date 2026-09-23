@@ -3,6 +3,7 @@ import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
 import { localTodayISO } from '../../../lib/utils'
 import type { ExerciseSet } from '../../../lib/types'
+import type { InsertTables, Json, UpdateTables } from '../../../types/supabase'
 
 
 interface WorkoutLoggerState {
@@ -61,13 +62,13 @@ export function useWorkoutLogger(planId: string | null, dayLabel: string, workou
       const logged: Record<string, ExerciseSet[]> = {}
       const swaps: Record<string, string> = {}
       for (const row of exLogs ?? []) {
-        logged[row.exercise_id as string] = (row.sets as ExerciseSet[]) ?? []
-        if (row.swapped_from_ref) swaps[row.swapped_from_ref as string] = row.exercise_id as string
+        logged[row.exercise_id] = (row.sets as unknown as ExerciseSet[]) ?? []
+        if (row.swapped_from_ref) swaps[row.swapped_from_ref] = row.exercise_id
       }
       setState((s) => ({
         ...s,
         workoutLogId: log.id,
-        startedAt: log.started_at ? new Date(log.started_at as string) : s.startedAt,
+        startedAt: log.started_at ? new Date(log.started_at) : s.startedAt,
         loggedExercises: logged,
         swapMap: swaps,
       }))
@@ -100,6 +101,8 @@ export function useWorkoutLogger(planId: string | null, dayLabel: string, workou
       .insert({
         user_id: user.id,
         plan_id: planId,
+        // TODO: type adoption pass — plan_version is hardcoded to 1 here, not
+        // read from the active plan. Not fixed as part of this types-only change.
         plan_version: 1,
         workout_date: workoutDate,
         day_label: dayLabel,
@@ -138,17 +141,19 @@ export function useWorkoutLogger(planId: string | null, dayLabel: string, workou
       if (existingLog) {
         await supabase
           .from('exercise_logs')
-          .update({ sets: updatedSets })
+          .update({ sets: updatedSets as unknown as Json })
           .eq('id', existingLog.id)
       } else {
-        await supabase.from('exercise_logs').insert({
+        const payload: InsertTables<'exercise_logs'> = {
           user_id: user.id,
           workout_log_id: logId,
           exercise_id: exerciseId,
           exercise_name: exerciseName,
           order_index: orderIndex,
-          sets: updatedSets,
-        })
+          sets: updatedSets as unknown as Json,
+          is_ad_hoc: false,
+        }
+        await supabase.from('exercise_logs').insert(payload)
       }
 
       setState((s) => ({
@@ -198,7 +203,12 @@ export function useWorkoutLogger(planId: string | null, dayLabel: string, workou
       if (existingLog) {
         await supabase
           .from('exercise_logs')
-          .update({ sets, exercise_name: exerciseName, ladder_assist_kg, ladder_surface_level })
+          .update({
+            sets: sets as unknown as Json,
+            exercise_name: exerciseName,
+            ladder_assist_kg,
+            ladder_surface_level,
+          })
           .eq('id', existingLog.id)
       } else {
         await supabase.from('exercise_logs').insert({
@@ -208,7 +218,7 @@ export function useWorkoutLogger(planId: string | null, dayLabel: string, workou
           library_exercise_id: exerciseId,
           exercise_name: exerciseName,
           order_index: orderIndex,
-          sets,
+          sets: sets as unknown as Json,
           ladder_assist_kg,
           ladder_surface_level,
           swapped_from_ref: opts?.swappedFromRef ?? null,
@@ -236,7 +246,7 @@ export function useWorkoutLogger(planId: string | null, dayLabel: string, workou
 
     setState((s) => ({ ...s, saving: true }))
 
-    const patch: Record<string, unknown> = { completed_at: new Date().toISOString() }
+    const patch: UpdateTables<'workout_logs'> = { completed_at: new Date().toISOString() }
     if (opts?.prehabSkipped) patch.prehab_skipped = true
 
     await supabase
