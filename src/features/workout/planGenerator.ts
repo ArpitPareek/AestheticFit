@@ -118,13 +118,7 @@ export async function generateDraftPlan(userId: string): Promise<WorkoutPlanRow>
  * is_active=true row.
  */
 export async function activatePlan(userId: string, planId: string): Promise<void> {
-  await supabase.from('workout_plans').update({ is_active: false }).eq('user_id', userId).eq('is_active', true)
-
-  const { error } = await supabase
-    .from('workout_plans')
-    .update({ is_active: true })
-    .eq('id', planId)
-    .eq('user_id', userId)
+  const { error } = await supabase.rpc('activate_plan', { p_user: userId, p_plan: planId })
   if (error) throw error
 }
 

@@ -66,7 +66,7 @@ export function useCardioLogs() {
     if (error) return { error: error.message }
     await load()
     return { error: null }
-  }, [user, today, load])
+  }, [user, load])
 
   const deleteSession = useCallback(async (id: string): Promise<{ error: string | null }> => {
     if (!user) return { error: 'Not signed in' }
