@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import { localTodayISO } from '../../lib/utils'
+import type { Tables } from '../../types/supabase'
+
+type SkinLogChecklist = Pick<Tables<'skin_logs'>, 'routine_type' | 'steps_done'>
 
 interface DashboardSnapshot {
   latestWeight: number | null
@@ -59,11 +62,11 @@ export function useDashboardData() {
     ])
 
     const skinLogs = skinRes.data ?? []
-    const amLog = skinLogs.find((s: { routine_type: string }) => s.routine_type === 'am')
-    const pmLog = skinLogs.find((s: { routine_type: string }) => s.routine_type === 'pm')
-    const hasDoneSteps = (log: { steps_done: Record<string, boolean> } | undefined) => {
+    const amLog = skinLogs.find((s) => s.routine_type === 'am')
+    const pmLog = skinLogs.find((s) => s.routine_type === 'pm')
+    const hasDoneSteps = (log: SkinLogChecklist | undefined) => {
       if (!log) return false
-      const vals = Object.values(log.steps_done as Record<string, boolean>)
+      const vals = Object.values(log.steps_done as unknown as Record<string, boolean>)
       return vals.length > 0 && vals.every(Boolean)
     }
 
@@ -72,8 +75,8 @@ export function useDashboardData() {
       lastSleep: dailyRes.data?.sleep_hours ?? null,
       todaySteps: dailyRes.data?.steps ?? null,
       todayWater: dailyRes.data?.water_glasses ?? null,
-      amSkinDone: hasDoneSteps(amLog as { steps_done: Record<string, boolean> } | undefined),
-      pmSkinDone: hasDoneSteps(pmLog as { steps_done: Record<string, boolean> } | undefined),
+      amSkinDone: hasDoneSteps(amLog),
+      pmSkinDone: hasDoneSteps(pmLog),
       workoutDoneToday: (workoutRes.count ?? 0) > 0,
     })
     setLoading(false)
