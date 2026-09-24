@@ -45,9 +45,12 @@ export function useDailyNutrition() {
   const todayRef = useRef(localTodayISO())
   const today = todayRef.current
 
-  const fetchMeals = useCallback(async () => {
+  const fetchMeals = useCallback(async (opts?: { silent?: boolean }) => {
     if (!user) { setLoading(false); return }
-    setLoading(true)
+    // Background refetches (realtime, reconnect on tab refocus) must not flip the
+    // loading flag — that would unmount MealLogger's subtree and wipe any parsed
+    // meal the user is mid-way through confirming.
+    if (!opts?.silent) setLoading(true)
     const { data } = await supabase
       .from('meal_logs')
       .select(MEAL_LOG_SELECT)
@@ -70,7 +73,7 @@ export function useDailyNutrition() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'meal_logs', filter: `user_id=eq.${user.id}` },
-        () => { fetchMeals() },
+        () => { fetchMeals({ silent: true }) },
       )
       .subscribe()
     return () => { supabase.removeChannel(channel) }
