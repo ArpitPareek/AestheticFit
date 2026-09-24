@@ -3,6 +3,7 @@ import { Apple, CookingPot, Pencil, Sparkles, Sunrise, Utensils, X } from 'lucid
 import { useAuth } from '../auth/AuthContext'
 import type { MealType, NewMealLogEntry } from './hooks/useDailyNutrition'
 import { useMealParser, type ParsedItem } from './hooks/useMealParser'
+import { promoteAiFood } from './promoteAiFood'
 
 const MEAL_OPTIONS: { type: MealType; label: string; icon: typeof Sunrise }[] = [
   { type: 'breakfast', label: 'Breakfast', icon: Sunrise },
@@ -146,10 +147,20 @@ export function NaturalMealEntry({
     for (const it of items) {
       const s = scaled(it)
 
+      // F4: promote AI-estimated items to the user's custom_foods (idempotent).
+      let customFoodId = it.custom_food_id
+      if (it.source === 'ai_estimated') {
+        customFoodId = await promoteAiFood(user.id, {
+          name: it.name,
+          unit: it.unit,
+          perUnit: it.perUnit,
+        })
+      }
+
       entries.push({
         meal_type: mealType,
         food_id: it.food_id,
-        custom_food_id: it.custom_food_id,
+        custom_food_id: customFoodId,
         food_name: it.name,
         servings: it.quantity,
         calories: Math.round(s.calories),
