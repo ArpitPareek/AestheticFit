@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Apple, CookingPot, Pencil, Sparkles, Sunrise, Utensils, X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import type { MealType, NewMealLogEntry } from './hooks/useDailyNutrition'
@@ -13,6 +13,27 @@ const MEAL_OPTIONS: { type: MealType; label: string; icon: typeof Sunrise }[] = 
 ]
 
 const PLACEHOLDER = '2 roti, 1 katori moong dal, small bowl dahi'
+
+// Draft persistence — a half-typed meal must survive a tab switch or a full page
+// reload (mobile PWAs routinely evict + reload the page when backgrounded, which
+// wipes all in-memory React state).
+const DRAFT_KEY = 'af:meal-draft'
+
+function loadDraft(): { text: string; mealType: MealType } {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return { text: '', mealType: 'breakfast' }
+    const p = JSON.parse(raw) as { text?: unknown; mealType?: unknown }
+    return {
+      text: typeof p.text === 'string' ? p.text : '',
+      mealType: MEAL_OPTIONS.some((m) => m.type === p.mealType)
+        ? (p.mealType as MealType)
+        : 'breakfast',
+    }
+  } catch {
+    return { text: '', mealType: 'breakfast' }
+  }
+}
 
 const round1 = (n: number) => Math.round(n * 10) / 10
 
@@ -76,11 +97,25 @@ export function NaturalMealEntry({
   const { user } = useAuth()
   const { status, parse, reset } = useMealParser()
 
-  const [mealType, setMealType] = useState<MealType>('breakfast')
-  const [text, setText] = useState('')
+  const [mealType, setMealType] = useState<MealType>(() => loadDraft().mealType)
+  const [text, setText] = useState(() => loadDraft().text)
   const [items, setItems] = useState<EditableItem[] | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Persist the in-progress draft so a background tab-discard / reload doesn't
+  // lose a half-typed meal. Cleared once the text is emptied (after logging).
+  useEffect(() => {
+    try {
+      if (text.trim()) {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ text, mealType }))
+      } else {
+        localStorage.removeItem(DRAFT_KEY)
+      }
+    } catch {
+      /* private mode / quota — draft persistence is best-effort */
+    }
+  }, [text, mealType])
 
   const parsing = status === 'parsing'
 

@@ -26,7 +26,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
-      setUser(session?.user ?? null)
+      // supabase-js refreshes the token on every tab refocus and emits a NEW
+      // user object with the SAME id. Naively calling setUser() churns the
+      // reference, which recreates every [user]-dependent callback/effect in the
+      // app (ProfileProvider.load, useDailyNutrition, …). Those flip their
+      // loading flags → the whole tree unmounts to a skeleton and remounts,
+      // wiping in-progress UI. Keep the previous reference when the id is
+      // unchanged so a token refresh is a no-op for consumers.
+      setUser((prev) => {
+        const next = session?.user ?? null
+        if (prev?.id === next?.id) return prev
+        return next
+      })
     })
 
     return () => subscription.unsubscribe()
