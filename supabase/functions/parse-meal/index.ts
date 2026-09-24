@@ -402,6 +402,38 @@ async function resolveItem(item: AiItem, warnings: string[]): Promise<ResolvedIt
   }
 }
 
+// -- wire shape (the contract the frontend consumes) --------------------------
+// Kept deliberately separate from the internal ResolvedItem so field names are
+// stable for the client: food_id (not matched_food_id), source normalised to
+// 'ifct'|'ai_estimated', and an explicit `matched` flag.
+type WireItem = {
+  name: string
+  quantity: number
+  unit: string
+  food_id: string | null
+  custom_food_id: string | null
+  source: 'ifct' | 'ai_estimated'
+  matched: boolean
+} & Macros
+
+function toWireItem(it: ResolvedItem): WireItem {
+  const source: 'ifct' | 'ai_estimated' = it.source === 'ai_estimated' ? 'ai_estimated' : 'ifct'
+  return {
+    name: it.name,
+    quantity: it.quantity,
+    unit: it.unit,
+    food_id: it.matched_food_id,
+    custom_food_id: null,
+    source,
+    matched: it.matched_food_id !== null,
+    calories: it.calories,
+    protein_g: it.protein_g,
+    carbs_g: it.carbs_g,
+    fat_g: it.fat_g,
+    fiber_g: it.fiber_g,
+  }
+}
+
 function sumTotals(items: ResolvedItem[]): Macros {
   const round1 = (n: number) => Math.round(n * 10) / 10
   return items.reduce(
@@ -453,6 +485,8 @@ Deno.serve(async (req) => {
       items: [],
       totals: { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 },
       warnings: ['ai_unavailable'],
+      // snake_case is the contract; camelCase kept for older clients.
+      manual_entry: true,
       manualEntry: true,
     }, cors)
   }
@@ -462,6 +496,7 @@ Deno.serve(async (req) => {
       items: [],
       totals: { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 },
       warnings: ['no_items_recognized'],
+      manual_entry: false,
       manualEntry: false,
     }, cors)
   }
@@ -478,9 +513,10 @@ Deno.serve(async (req) => {
   }
 
   return json(200, {
-    items: resolved,
+    items: resolved.map(toWireItem),
     totals: sumTotals(resolved),
     warnings,
+    manual_entry: false,
     manualEntry: false,
   }, cors)
 })
