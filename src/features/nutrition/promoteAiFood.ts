@@ -76,7 +76,10 @@ export async function promoteAiFood(
     fiber_g: round1(food.perUnit.fiber_g),
     is_recipe: false,
     is_veg: true,
-    source: 'ai_estimated',
+    // custom_foods.source check allows ('manual','ai_parsed','ifct','barcode') —
+    // NOT 'ai_estimated'. Using the wrong value here silently fails the insert,
+    // so the food never promotes and every log falls back to quick_add.
+    source: 'ai_parsed',
     created_at: nowIso,
     updated_at: nowIso,
   }

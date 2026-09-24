@@ -172,15 +172,20 @@ export function NaturalMealEntry({
         }
       }
 
-      // meal_log_identity check: source='quick_add' OR exactly one of
-      // (food_id, custom_food_id) is set. Enforce a single identity, and fall
-      // back to quick_add when neither id could be resolved.
-      let source: string = it.source
+      // Two constraints on meal_logs:
+      //  - meal_log_identity: source='quick_add' OR exactly one of
+      //    (food_id, custom_food_id) is set.
+      //  - meal_logs_source_check: source ∈ (library, custom, recipe,
+      //    ai_parsed, quick_add) — NOT the parser's 'ifct'/'ai_estimated'.
+      // Enforce a single identity and map to a valid source enum.
+      let source: string
       let itemLabel: string | null = null
       if (foodId) {
         customFoodId = null
+        source = 'library'
       } else if (customFoodId) {
         foodId = null
+        source = it.source === 'custom' ? 'custom' : 'ai_parsed'
       } else {
         foodId = null
         customFoodId = null
