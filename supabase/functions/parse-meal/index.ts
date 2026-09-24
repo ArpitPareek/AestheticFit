@@ -74,12 +74,17 @@ const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 // -- types --------------------------------------------------------------------
 type Macros = { calories: number; protein_g: number; carbs_g: number; fat_g: number; fiber_g: number }
 
+type Ingredient = { name: string; grams: number }
+
 type AiItem = {
   name: string
   quantity: number
   unit: string
   estimated_grams: number
   estimate_per_100g: Macros
+  // Present for cooked/composite dishes: the raw components (for the TOTAL amount
+  // described) so we can compute macros from the DB instead of trusting a guess.
+  ingredients: Ingredient[]
 }
 
 type ResolvedItem = {
@@ -89,7 +94,7 @@ type ResolvedItem = {
   matched_food_id: string | null
   matched_name: string | null
   grams: number
-  source: 'library' | 'fuzzy' | 'ai_estimated'
+  source: 'library' | 'fuzzy' | 'ai_estimated' | 'composed'
 } & Macros
 
 // -- inlined auth (mirrors _shared/auth.ts) -----------------------------------
@@ -124,7 +129,7 @@ async function checkRateLimit(userId: string): Promise<{ allowed: boolean; remai
 const SYSTEM_PROMPT = `You extract food items from a casual meal description (often Indian home food, mixed English/Hindi).
 
 Return ONLY a JSON object of the exact shape:
-{"items":[{"name":string,"quantity":number,"unit":string,"estimated_grams":number,"estimate_per_100g":{"calories":number,"protein_g":number,"carbs_g":number,"fat_g":number,"fiber_g":number}}]}
+{"items":[{"name":string,"quantity":number,"unit":string,"estimated_grams":number,"estimate_per_100g":{"calories":number,"protein_g":number,"carbs_g":number,"fat_g":number,"fiber_g":number},"ingredients":[{"name":string,"grams":number}]}]}
 
 Rules:
 - "name": the food's common name (e.g. "toor dal", "roti", "paneer tikka").
@@ -141,7 +146,8 @@ Rules:
   Prefer household units (katori/plate/glass/piece) over raw grams unless the
   user actually stated grams/ml.
 - "estimated_grams": your best-guess TOTAL grams for this line item (quantity * typical serving weight), consistent with the portion defaults above.
-- "estimate_per_100g": your best-guess macros per 100g of this food, ALWAYS include this even if you are confident the food is a well-known one -- it's used only as a fallback.
+- "estimate_per_100g": your best-guess macros per 100g of this food, ALWAYS include this even if you are confident the food is a well-known one -- it's used only as a fallback. Keep these realistic: per 100 g, calories 0-900, protein/carbs/fat/fibre each 0-100, and calories must roughly equal 4*protein + 4*carbs + 9*fat.
+- "ingredients": for a COOKED or COMPOSITE dish (dal, sabzi, curry, biryani, poha, shake, sandwich, etc.), list its main RAW components with grams for the TOTAL amount eaten, using simple ingredient names our database knows (e.g. "toor dal", "rice", "onion", "sunflower oil", "milk", "sugar", "wheat flour", "paneer", "potato"). Include oil/ghee used in cooking. For a SINGLE whole food (an apple, a boiled egg, plain milk, raw nuts) return "ingredients":[]. Prefer 3-8 ingredients; grams should sum to roughly the dish's total weight.
 - No prose, no markdown, no extra keys. If you cannot identify any food, return {"items":[]}.`
 
 class ProviderError extends Error {}
@@ -150,6 +156,39 @@ function withTimeout(ms: number): { signal: AbortSignal; cancel: () => void } {
   const controller = new AbortController()
   const t = setTimeout(() => controller.abort(), ms)
   return { signal: controller.signal, cancel: () => clearTimeout(t) }
+}
+
+const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
+
+// Reject physically-impossible per-100g macros and reconcile calories with the
+// Atwater sum (4/4/9). Prevents a hallucinated "900 cal, 80 g protein" from
+// being logged or cached.
+function sanitizePer100g(m: Macros): { macros: Macros; adjusted: boolean } {
+  const protein_g = clamp(Number(m.protein_g) || 0, 0, 100)
+  const carbs_g = clamp(Number(m.carbs_g) || 0, 0, 100)
+  const fat_g = clamp(Number(m.fat_g) || 0, 0, 100)
+  const fiber_g = clamp(Number(m.fiber_g) || 0, 0, 100)
+  const atwater = 4 * protein_g + 4 * carbs_g + 9 * fat_g
+  let calories = clamp(Number(m.calories) || 0, 0, 900)
+  // If the model's calories disagree with the macro sum by >25% (and the sum is
+  // meaningful), trust the Atwater calculation — it's internally consistent.
+  const adjusted =
+    atwater > 20 && Math.abs(calories - atwater) / atwater > 0.25
+  if (adjusted) calories = Math.round(atwater)
+  return { macros: { calories, protein_g, carbs_g, fat_g, fiber_g }, adjusted }
+}
+
+function parseIngredients(raw: unknown): Ingredient[] {
+  if (!Array.isArray(raw)) return []
+  const out: Ingredient[] = []
+  for (const ing of raw) {
+    const name = typeof ing?.name === 'string' ? ing.name.trim() : ''
+    const grams = Number(ing?.grams)
+    if (name && Number.isFinite(grams) && grams > 0) {
+      out.push({ name, grams: clamp(grams, 1, 2000) })
+    }
+  }
+  return out
 }
 
 function parseAiItems(raw: string | undefined | null): AiItem[] | null {
@@ -161,18 +200,20 @@ function parseAiItems(raw: string | undefined | null): AiItem[] | null {
     for (const it of obj.items) {
       if (typeof it?.name !== 'string' || !it.name.trim()) continue
       const est = it.estimate_per_100g ?? {}
+      const { macros } = sanitizePer100g({
+        calories: Number(est.calories) || 0,
+        protein_g: Number(est.protein_g) || 0,
+        carbs_g: Number(est.carbs_g) || 0,
+        fat_g: Number(est.fat_g) || 0,
+        fiber_g: Number(est.fiber_g) || 0,
+      })
       items.push({
         name: it.name.trim(),
         quantity: Number.isFinite(it.quantity) ? Number(it.quantity) : 1,
         unit: typeof it.unit === 'string' && it.unit.trim() ? it.unit.trim().toLowerCase() : 'piece',
-        estimated_grams: Number.isFinite(it.estimated_grams) ? Math.max(1, Math.min(2000, Number(it.estimated_grams))) : 100,
-        estimate_per_100g: {
-          calories: Number(est.calories) || 0,
-          protein_g: Number(est.protein_g) || 0,
-          carbs_g: Number(est.carbs_g) || 0,
-          fat_g: Number(est.fat_g) || 0,
-          fiber_g: Number(est.fiber_g) || 0,
-        },
+        estimated_grams: Number.isFinite(it.estimated_grams) ? clamp(Number(it.estimated_grams), 1, 2000) : 100,
+        estimate_per_100g: macros,
+        ingredients: parseIngredients(it.ingredients),
       })
     }
     return items
@@ -312,71 +353,121 @@ function scaleMacros(per: Macros, perGrams: number, grams: number): Macros {
 // -- DB resolution -------------------------------------------------------------
 const FUZZY_MIN_SIMILARITY = 0.3 // matches the `%` operator's own threshold; anything returned already clears this
 
+type FoodRow = {
+  id: string; name: string; serving_grams: number
+  calories: number; protein_g: number; carbs_g: number; fat_g: number; fiber_g: number
+}
+const FOOD_COLS = 'id, name, serving_grams, calories, protein_g, carbs_g, fat_g, fiber_g'
+
+// Exact (case-insensitive) then trigram-fuzzy lookup against food_library.
+// Shared by whole-item matching and per-ingredient decomposition.
+async function findLibraryFood(
+  query: string,
+): Promise<{ food: FoodRow; source: 'library' | 'fuzzy'; similarity: number } | null> {
+  const { data: exact } = await serviceClient
+    .from('food_library').select(FOOD_COLS).ilike('name', query.trim()).limit(2)
+  if (exact && exact.length === 1) return { food: exact[0] as FoodRow, source: 'library', similarity: 1 }
+
+  const { data: fuzzy, error } = await serviceClient.rpc('match_food_fuzzy', {
+    p_query: normalizeName(query), p_limit: 1,
+  })
+  if (error) console.error('fuzzy_rpc_error', error.message)
+  const top = Array.isArray(fuzzy) ? fuzzy[0] : null
+  if (top && top.similarity >= FUZZY_MIN_SIMILARITY) {
+    const { data: fl } = await serviceClient.from('food_library').select(FOOD_COLS).eq('id', top.food_id).maybeSingle()
+    if (fl) return { food: fl as FoodRow, source: 'fuzzy', similarity: Number(top.similarity) }
+  }
+  return null
+}
+
+function perGram(food: FoodRow): Macros {
+  const sg = Number(food.serving_grams) || 100
+  return {
+    calories: Number(food.calories) / sg, protein_g: Number(food.protein_g) / sg,
+    carbs_g: Number(food.carbs_g) / sg, fat_g: Number(food.fat_g) / sg, fiber_g: Number(food.fiber_g) / sg,
+  }
+}
+
+// A composed dish is trustworthy only when most of its mass resolves to real
+// library ingredients — otherwise the sum silently undercounts.
+const DECOMP_MIN_MATCH_RATIO = 0.8
+
+// Compute a cooked/composite dish's macros by summing its raw ingredients from
+// the (authoritative) library. Returns null when there aren't enough ingredients
+// or too little of the mass matched — the caller then falls back to matching or
+// the AI estimate.
+async function decompose(item: AiItem, warnings: string[]): Promise<ResolvedItem | null> {
+  const ings = item.ingredients
+  if (!ings || ings.length < 2) return null
+
+  let totalGrams = 0
+  let matchedGrams = 0
+  const sum: Macros = { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 }
+  for (const ing of ings) {
+    totalGrams += ing.grams
+    const found = await findLibraryFood(ing.name)
+    if (!found) continue
+    const pg = perGram(found.food)
+    sum.calories += pg.calories * ing.grams
+    sum.protein_g += pg.protein_g * ing.grams
+    sum.carbs_g += pg.carbs_g * ing.grams
+    sum.fat_g += pg.fat_g * ing.grams
+    sum.fiber_g += pg.fiber_g * ing.grams
+    matchedGrams += ing.grams
+  }
+  if (totalGrams <= 0 || matchedGrams / totalGrams < DECOMP_MIN_MATCH_RATIO) return null
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  warnings.push(`composed:${item.name}(${Math.round((matchedGrams / totalGrams) * 100)}%)`)
+  return {
+    name: item.name, quantity: item.quantity, unit: item.unit,
+    matched_food_id: null, matched_name: item.name, grams: Math.round(totalGrams),
+    source: 'composed',
+    calories: round1(sum.calories), protein_g: round1(sum.protein_g),
+    carbs_g: round1(sum.carbs_g), fat_g: round1(sum.fat_g), fiber_g: round1(sum.fiber_g),
+  }
+}
+
 async function resolveItem(item: AiItem, warnings: string[]): Promise<ResolvedItem> {
   const normalized = normalizeName(item.name)
 
-  // 1. exact (case-insensitive) match against food_library.name
-  const { data: exact } = await serviceClient
-    .from('food_library')
-    .select('id, name, serving_grams, calories, protein_g, carbs_g, fat_g, fiber_g')
-    .ilike('name', item.name.trim())
-    .limit(2)
+  // 0. Cooked/composite dish with known raw ingredients → sum them from the DB.
+  //    Most accurate path for home food; only used when the mass mostly matches.
+  const composed = await decompose(item, warnings)
+  if (composed) return composed
 
-  let food = exact && exact.length === 1 ? exact[0] : null
-  let matchSource: 'library' | 'fuzzy' | null = food ? 'library' : null
-
-  // 2. trigram fuzzy match (name + embedded aliases + food_aliases table)
-  if (!food) {
-    const { data: fuzzy, error: fuzzyErr } = await serviceClient.rpc('match_food_fuzzy', {
-      p_query: normalized,
-      p_limit: 1,
-    })
-    if (fuzzyErr) console.error('fuzzy_rpc_error', fuzzyErr.message)
-    const top = Array.isArray(fuzzy) ? fuzzy[0] : null
-    if (top && top.similarity >= FUZZY_MIN_SIMILARITY) {
-      const { data: fl } = await serviceClient
-        .from('food_library')
-        .select('id, name, serving_grams, calories, protein_g, carbs_g, fat_g, fiber_g')
-        .eq('id', top.food_id)
-        .maybeSingle()
-      if (fl) {
-        food = fl
-        matchSource = 'fuzzy'
-        if (top.similarity < 0.6) warnings.push(`low_confidence_match:${item.name}->${fl.name}`)
-      }
+  // 1. Whole-item match against food_library (exact, then trigram fuzzy).
+  const match = await findLibraryFood(item.name)
+  if (match) {
+    if (match.source === 'fuzzy' && match.similarity < 0.6) {
+      warnings.push(`low_confidence_match:${item.name}->${match.food.name}`)
     }
-  }
-
-  if (food) {
     const { grams, usedDefaultServing } = await gramsForMatchedFood(
-      food.id, Number(food.serving_grams), item.unit, item.quantity, item.estimated_grams,
+      match.food.id, Number(match.food.serving_grams), item.unit, item.quantity, item.estimated_grams,
     )
     if (usedDefaultServing) warnings.push(`no_portion_data:${item.name}:${item.unit}`)
     const macros = scaleMacros(
-      { calories: Number(food.calories), protein_g: Number(food.protein_g), carbs_g: Number(food.carbs_g), fat_g: Number(food.fat_g), fiber_g: Number(food.fiber_g) },
-      Number(food.serving_grams),
-      grams,
+      { calories: Number(match.food.calories), protein_g: Number(match.food.protein_g), carbs_g: Number(match.food.carbs_g), fat_g: Number(match.food.fat_g), fiber_g: Number(match.food.fiber_g) },
+      Number(match.food.serving_grams), grams,
     )
     return {
       name: item.name, quantity: item.quantity, unit: item.unit,
-      matched_food_id: food.id, matched_name: food.name, grams,
-      source: matchSource!, ...macros,
+      matched_food_id: match.food.id, matched_name: match.food.name, grams,
+      source: match.source, ...macros,
     }
   }
 
-  // 3. previously cached AI estimate (dedup by normalized_name)
+  // 2. Previously cached AI estimate (dedup by normalized_name).
   const { data: cached } = await serviceClient
     .from('ai_food_estimates')
     .select('id, name, serving_grams, calories, protein_g, carbs_g, fat_g, fiber_g')
     .eq('normalized_name', normalized)
     .maybeSingle()
-
   if (cached) {
     const grams = item.estimated_grams
     const macros = scaleMacros(
       { calories: Number(cached.calories), protein_g: Number(cached.protein_g), carbs_g: Number(cached.carbs_g), fat_g: Number(cached.fat_g), fiber_g: Number(cached.fiber_g) },
-      Number(cached.serving_grams),
-      grams,
+      Number(cached.serving_grams), grams,
     )
     warnings.push(`ai_estimated:${item.name}`)
     return {
@@ -386,7 +477,7 @@ async function resolveItem(item: AiItem, warnings: string[]): Promise<ResolvedIt
     }
   }
 
-  // 4. fresh AI estimate (already returned alongside the extraction, no 2nd call) -- cache it
+  // 3. Fresh AI estimate (already sanitized in parseAiItems) → cache it.
   const grams = item.estimated_grams
   const macros = scaleMacros(item.estimate_per_100g, 100, grams)
   warnings.push(`ai_estimated:${item.name}`)
@@ -434,7 +525,10 @@ type WireItem = {
 } & Macros
 
 function toWireItem(it: ResolvedItem): WireItem {
-  const source: 'ifct' | 'ai_estimated' = it.source === 'ai_estimated' ? 'ai_estimated' : 'ifct'
+  // library/fuzzy resolve to a single food row (has food_id); composed dishes
+  // and raw AI estimates don't, so they ride the ai_estimated lane on the wire.
+  const source: 'ifct' | 'ai_estimated' =
+    it.source === 'library' || it.source === 'fuzzy' ? 'ifct' : 'ai_estimated'
   return {
     name: it.name,
     quantity: it.quantity,
