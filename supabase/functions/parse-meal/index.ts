@@ -171,9 +171,14 @@ function parseAiItems(raw: string | undefined | null): AiItem[] | null {
   }
 }
 
+// Groq is the sole provider (no Gemini fallback configured), so give it a
+// generous timeout — a slow-but-valid response on cold start shouldn't be
+// killed into a manual-entry fallback. Override with GROQ_TIMEOUT_MS if needed.
+const GROQ_TIMEOUT_MS = Number(Deno.env.get('GROQ_TIMEOUT_MS')) || 9000
+
 async function callGroq(text: string): Promise<AiItem[] | null> {
   if (!GROQ_API_KEY) throw new ProviderError('groq_not_configured')
-  const { signal, cancel } = withTimeout(4000)
+  const { signal, cancel } = withTimeout(GROQ_TIMEOUT_MS)
   try {
     const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
