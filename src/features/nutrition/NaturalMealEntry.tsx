@@ -3,7 +3,7 @@ import { Apple, CookingPot, Pencil, Sparkles, Sunrise, Utensils, X } from 'lucid
 import { useAuth } from '../auth/AuthContext'
 import type { MealType, NewMealLogEntry } from './hooks/useDailyNutrition'
 import { useMealParser, type ParsedItem } from './hooks/useMealParser'
-import { promoteAiFood } from './promoteAiFood'
+import { findCustomFoodId, promoteAiFood } from './promoteAiFood'
 
 const MEAL_OPTIONS: { type: MealType; label: string; icon: typeof Sunrise }[] = [
   { type: 'breakfast', label: 'Breakfast', icon: Sunrise },
@@ -147,26 +147,36 @@ export function NaturalMealEntry({
     for (const it of items) {
       const s = scaled(it)
 
-      // F4: promote AI-estimated items to the user's custom_foods (idempotent).
-      let customFoodId = it.custom_food_id
-      if (it.source === 'ai_estimated') {
-        customFoodId = await promoteAiFood(user.id, {
-          name: it.name,
-          unit: it.unit,
-          perUnit: it.perUnit,
-        })
+      let foodId: string | null = it.food_id
+      let customFoodId: string | null = it.custom_food_id
+
+      // Resolve a library reference when the parse didn't hand us an id.
+      if (!foodId && !customFoodId) {
+        if (it.source === 'ai_estimated') {
+          // F4: promote to the user's custom_foods (idempotent).
+          customFoodId = await promoteAiFood(user.id, {
+            name: it.name,
+            unit: it.unit,
+            perUnit: it.perUnit,
+          })
+        } else if (it.source === 'custom') {
+          customFoodId = await findCustomFoodId(user.id, it.name)
+        }
       }
 
-      // meal_log_identity check constraint: a row must be identified by EXACTLY
-      // one of food_id / custom_food_id / item_label. Pick one, null the rest.
-      let foodId: string | null = it.food_id
+      // meal_log_identity check: source='quick_add' OR exactly one of
+      // (food_id, custom_food_id) is set. Enforce a single identity, and fall
+      // back to quick_add when neither id could be resolved.
+      let source: string = it.source
       let itemLabel: string | null = null
       if (foodId) {
         customFoodId = null
       } else if (customFoodId) {
         foodId = null
       } else {
-        // Nothing matched a library row — identify by free-text label.
+        foodId = null
+        customFoodId = null
+        source = 'quick_add'
         itemLabel = it.name
       }
 
@@ -181,7 +191,7 @@ export function NaturalMealEntry({
         carbs_g: round1(s.carbs_g),
         fat_g: round1(s.fat_g),
         fiber_g: round1(s.fiber_g),
-        source: it.source,
+        source,
         item_label: itemLabel,
       })
     }

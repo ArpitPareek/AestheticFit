@@ -25,6 +25,23 @@ export function normalizeFoodName(name: string): string {
 const round1 = (n: number) => Math.round(n * 10) / 10
 
 /**
+ * Look up an existing custom_foods.id for this user by normalized name.
+ * Returns null when there's no match.
+ */
+export async function findCustomFoodId(
+  userId: string,
+  name: string,
+): Promise<string | null> {
+  const norm = normalizeFoodName(name)
+  const { data } = await supabase
+    .from('custom_foods')
+    .select('id, name')
+    .eq('user_id', userId)
+  const match = data?.find((f) => normalizeFoodName(f.name) === norm)
+  return match?.id ?? null
+}
+
+/**
  * F4 — Promote an AI-estimated food to the user's custom_foods library and seed
  * the shared AI cache. Idempotent per (user, normalized name): a second call
  * reuses the existing row instead of duplicating.
@@ -39,13 +56,8 @@ export async function promoteAiFood(
   const norm = normalizeFoodName(food.name)
 
   // 1. Already in this user's library? Reuse it — never duplicate.
-  const { data: existing } = await supabase
-    .from('custom_foods')
-    .select('id, name')
-    .eq('user_id', userId)
-
-  const match = existing?.find((f) => normalizeFoodName(f.name) === norm)
-  if (match) return match.id
+  const existingId = await findCustomFoodId(userId, food.name)
+  if (existingId) return existingId
 
   // 2. Insert a new custom_foods row with the per-serving AI macros.
   const nowIso = new Date().toISOString()
