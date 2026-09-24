@@ -130,7 +130,17 @@ Rules:
 - "name": the food's common name (e.g. "toor dal", "roti", "paneer tikka").
 - "quantity": the number of "unit"s mentioned (default 1 if not stated).
 - "unit": one of piece, katori, small_katori, plate, glass, cup, tbsp, tsp, g, kg, ml -- pick the closest one; if grams/ml are stated use those directly.
-- "estimated_grams": your best-guess TOTAL grams for this line item (quantity * typical serving weight).
+- PORTION DEFAULTS -- when the amount is vague or unstated, assume ONE realistic
+  adult serving, never a tiny count. Guidance:
+    * bare food name, no amount -> quantity 1 of its natural serving unit
+      (dal/sabzi/rice -> 1 katori; roti/egg/idli/fruit -> 1 piece; milk/juice/
+      tea/coffee/shake -> 1 glass; oil/ghee/butter/peanut butter -> 1 tsp).
+    * "handful" of nuts/snacks -> ~20 g (NOT a few pieces).
+    * "bowl" -> katori; "small bowl" -> small_katori; "plate" -> plate.
+    * a glass ~250 ml, a katori ~150 g, a cup ~150 ml, a tbsp ~15 g, a tsp ~5 g.
+  Prefer household units (katori/plate/glass/piece) over raw grams unless the
+  user actually stated grams/ml.
+- "estimated_grams": your best-guess TOTAL grams for this line item (quantity * typical serving weight), consistent with the portion defaults above.
 - "estimate_per_100g": your best-guess macros per 100g of this food, ALWAYS include this even if you are confident the food is a well-known one -- it's used only as a fallback.
 - No prose, no markdown, no extra keys. If you cannot identify any food, return {"items":[]}.`
 
@@ -417,6 +427,8 @@ type WireItem = {
   unit: string
   food_id: string | null
   custom_food_id: string | null
+  matched_name: string | null
+  grams: number
   source: 'ifct' | 'ai_estimated'
   matched: boolean
 } & Macros
@@ -429,6 +441,9 @@ function toWireItem(it: ResolvedItem): WireItem {
     unit: it.unit,
     food_id: it.matched_food_id,
     custom_food_id: null,
+    // Canonical library name so the client can show what it actually resolved to.
+    matched_name: it.matched_name,
+    grams: it.grams,
     source,
     matched: it.matched_food_id !== null,
     calories: it.calories,

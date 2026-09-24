@@ -40,6 +40,8 @@ const round1 = (n: number) => Math.round(n * 10) / 10
 interface EditableItem {
   key: string
   name: string
+  // Canonical library name when matched (e.g. 'Peanuts'); used for display + logging.
+  matchedName: string | null
   unit: string
   quantity: number
   // Per-single-unit macros — the invariant we scale by quantity for display + logging.
@@ -50,6 +52,8 @@ interface EditableItem {
     fat_g: number
     fiber_g: number
   }
+  // Grams for a single unit, so displayed grams track quantity edits.
+  perUnitGrams: number
   food_id: string | null
   custom_food_id: string | null
   source: ParsedItem['source']
@@ -61,8 +65,9 @@ function toEditable(raw: ParsedItem, index: number): EditableItem {
   return {
     key: `${index}-${raw.name}`,
     name: raw.name,
+    matchedName: raw.matched_name ?? null,
     unit: raw.unit,
-    quantity: raw.quantity > 0 ? raw.quantity : 1,
+    quantity: q,
     perUnit: {
       calories: raw.calories / q,
       protein_g: raw.protein_g / q,
@@ -70,11 +75,27 @@ function toEditable(raw: ParsedItem, index: number): EditableItem {
       fat_g: raw.fat_g / q,
       fiber_g: raw.fiber_g / q,
     },
+    perUnitGrams: (raw.grams ?? 0) / q,
     food_id: raw.food_id ?? null,
     custom_food_id: raw.custom_food_id ?? null,
     source: raw.source,
     matched: raw.matched,
   }
+}
+
+// What the app understood — the canonical name when matched, else the raw text.
+function displayName(it: EditableItem): string {
+  return it.matched && it.matchedName ? it.matchedName : it.name
+}
+
+// Human portion string, e.g. "500 ml", "2 katori", "8 piece (≈4 g)".
+function portionLabel(it: EditableItem): string {
+  const unit = it.unit.trim()
+  const base = unit ? `${round1(it.quantity)} ${unit}` : `${round1(it.quantity)}`
+  const grams = Math.round(it.perUnitGrams * it.quantity)
+  // Only append grams when the unit isn't already a weight/volume.
+  const isWeight = ['g', 'kg', 'ml', 'gram', 'grams'].includes(unit.toLowerCase())
+  return grams > 0 && !isWeight ? `${base} (≈${grams} g)` : base
 }
 
 function scaled(it: EditableItem) {
@@ -214,7 +235,6 @@ export function NaturalMealEntry({
       //    ai_parsed, quick_add) — NOT the parser's 'ifct'/'ai_estimated'.
       // Enforce a single identity and map to a valid source enum.
       let source: string
-      let itemLabel: string | null = null
       if (foodId) {
         customFoodId = null
         source = 'library'
@@ -225,14 +245,14 @@ export function NaturalMealEntry({
         foodId = null
         customFoodId = null
         source = 'quick_add'
-        itemLabel = it.name
       }
 
       entries.push({
         meal_type: mealType,
         food_id: foodId,
         custom_food_id: customFoodId,
-        food_name: it.name,
+        // Canonical name when matched, so the log reads 'Peanuts' not 'moongfali'.
+        food_name: displayName(it),
         servings: it.quantity,
         calories: Math.round(s.calories),
         protein_g: round1(s.protein_g),
@@ -240,7 +260,8 @@ export function NaturalMealEntry({
         fat_g: round1(s.fat_g),
         fiber_g: round1(s.fiber_g),
         source,
-        item_label: itemLabel,
+        // item_label carries the human portion for the logged-row display.
+        item_label: portionLabel(it),
       })
     }
 
@@ -333,15 +354,29 @@ export function NaturalMealEntry({
               <div key={it.key} className="rounded-xl bg-slate-800/50 p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-white">{it.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-sm font-medium text-white">{displayName(it)}</p>
+                      {it.matched ? (
+                        <span className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-400">
+                          ✓ matched
+                        </span>
+                      ) : (
+                        <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-amber-400">
+                          AI estimate
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] text-slate-500">
-                      {it.quantity} {it.unit}
+                      {portionLabel(it)}
+                      {it.matched && it.matchedName && it.matchedName.toLowerCase() !== it.name.toLowerCase() && (
+                        <span className="text-slate-600"> · you said “{it.name}”</span>
+                      )}
                     </p>
                   </div>
                   <button
                     onClick={() => handleRemove(it.key)}
                     className="shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-700 hover:text-red-400"
-                    aria-label={`Remove ${it.name}`}
+                    aria-label={`Remove ${displayName(it)}`}
                   >
                     <X size={16} />
                   </button>
@@ -357,11 +392,6 @@ export function NaturalMealEntry({
                       {round1(s.protein_g)}
                       <span className="ml-0.5 text-[10px] font-normal text-slate-500">g P</span>
                     </span>
-                    {it.source === 'ai_estimated' && (
-                      <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-semibold text-amber-400">
-                        AI estimate — may vary
-                      </span>
-                    )}
                   </div>
 
                   {/* Inline quantity edit */}

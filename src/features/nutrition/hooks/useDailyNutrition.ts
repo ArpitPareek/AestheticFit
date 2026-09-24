@@ -6,11 +6,12 @@ import type { InsertTables, Tables } from '../../../types/supabase'
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 
-const MEAL_LOG_SELECT = 'id, meal_type, food_id, food_name, servings, calories, protein_g, carbs_g, fat_g' as const
+const MEAL_LOG_SELECT = 'id, meal_type, food_id, food_name, servings, calories, protein_g, carbs_g, fat_g, item_label, source' as const
 
 export type MealLogEntry = Pick<
   Tables<'meal_logs'>,
-  'id' | 'food_id' | 'food_name' | 'servings' | 'calories' | 'protein_g' | 'carbs_g' | 'fat_g'
+  | 'id' | 'food_id' | 'food_name' | 'servings' | 'calories' | 'protein_g' | 'carbs_g' | 'fat_g'
+  | 'item_label' | 'source'
 > & { meal_type: MealType }
 
 export type NewMealLogEntry = Pick<

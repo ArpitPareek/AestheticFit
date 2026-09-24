@@ -10,6 +10,10 @@ export interface ParsedItem {
   unit: string
   food_id?: string | null
   custom_food_id?: string | null
+  // Canonical library name when this resolved to a food row (e.g. 'moongfali'
+  // → 'Peanuts'); null for pure AI estimates. Total grams the app understood.
+  matched_name?: string | null
+  grams?: number
   calories: number
   protein_g: number
   carbs_g: number
@@ -48,6 +52,8 @@ interface RawParsedItem {
   food_id?: string | null
   matched_food_id?: string | null
   custom_food_id?: string | null
+  matched_name?: string | null
+  grams?: number
   calories?: number
   protein_g?: number
   carbs_g?: number
@@ -85,6 +91,8 @@ function normalizeItem(raw: RawParsedItem): ParsedItem {
     unit: (raw.unit ?? '').trim(),
     food_id: foodId,
     custom_food_id: raw.custom_food_id ?? null,
+    matched_name: raw.matched_name ?? null,
+    grams: num(raw.grams),
     calories: num(raw.calories),
     protein_g: num(raw.protein_g),
     carbs_g: num(raw.carbs_g),

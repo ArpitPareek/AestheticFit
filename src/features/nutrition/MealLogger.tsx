@@ -342,8 +342,14 @@ function MealSection({
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm text-white">
                       {entry.food_name}
-                      {entry.servings !== 1 && (
-                        <span className="text-slate-500"> ×{entry.servings}</span>
+                      {/* Prefer the stored portion label ("500 ml", "2 katori");
+                          fall back to ×servings for older rows without one. */}
+                      {entry.item_label ? (
+                        <span className="text-slate-500"> · {entry.item_label}</span>
+                      ) : (
+                        entry.servings !== 1 && (
+                          <span className="text-slate-500"> ×{entry.servings}</span>
+                        )
                       )}
                     </p>
                     <p className="text-[10px] text-slate-500">
