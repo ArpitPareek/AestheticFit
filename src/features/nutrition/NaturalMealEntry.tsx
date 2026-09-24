@@ -157,9 +157,22 @@ export function NaturalMealEntry({
         })
       }
 
+      // meal_log_identity check constraint: a row must be identified by EXACTLY
+      // one of food_id / custom_food_id / item_label. Pick one, null the rest.
+      let foodId: string | null = it.food_id
+      let itemLabel: string | null = null
+      if (foodId) {
+        customFoodId = null
+      } else if (customFoodId) {
+        foodId = null
+      } else {
+        // Nothing matched a library row — identify by free-text label.
+        itemLabel = it.name
+      }
+
       entries.push({
         meal_type: mealType,
-        food_id: it.food_id,
+        food_id: foodId,
         custom_food_id: customFoodId,
         food_name: it.name,
         servings: it.quantity,
@@ -169,7 +182,7 @@ export function NaturalMealEntry({
         fat_g: round1(s.fat_g),
         fiber_g: round1(s.fiber_g),
         source: it.source,
-        item_label: `${it.quantity} ${it.unit}`.trim(),
+        item_label: itemLabel,
       })
     }
 
