@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useDailyNutrition, type MealLogEntry, type MealType } from './hooks/useDailyNutrition'
 import { useNutritionTargets } from './hooks/useNutritionTargets'
+import { NaturalMealEntry } from './NaturalMealEntry'
 import {
   FOODS,
   FOOD_CATEGORIES,
@@ -400,7 +401,7 @@ function ProteinGap({ current, target }: { current: number; target: number }) {
 
 // ─── Main Component ────────────────────────────────────────
 export function MealLogger() {
-  const { totals, mealsByType, addMeal, removeMeal, loading } = useDailyNutrition()
+  const { totals, mealsByType, addMeal, addMeals, removeMeal, loading } = useDailyNutrition()
   const { targets, goalMode, loading: targetsLoading } = useNutritionTargets()
   const [pickerMeal, setPickerMeal] = useState<MealType | null>(null)
 
@@ -488,6 +489,9 @@ export function MealLogger() {
           </p>
         )}
       </div>
+
+      {/* Natural language meal entry */}
+      <NaturalMealEntry addMeals={addMeals} onManual={setPickerMeal} />
 
       {/* Protein gap alert */}
       <ProteinGap current={totals.protein_g} target={targets.protein_g} />

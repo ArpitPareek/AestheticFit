@@ -13,9 +13,19 @@ export type MealLogEntry = Pick<
   'id' | 'food_id' | 'food_name' | 'servings' | 'calories' | 'protein_g' | 'carbs_g' | 'fat_g'
 > & { meal_type: MealType }
 
-type NewMealLogEntry = Pick<
+export type NewMealLogEntry = Pick<
   InsertTables<'meal_logs'>,
-  'food_id' | 'food_name' | 'servings' | 'calories' | 'protein_g' | 'carbs_g' | 'fat_g'
+  | 'food_id'
+  | 'custom_food_id'
+  | 'food_name'
+  | 'servings'
+  | 'calories'
+  | 'protein_g'
+  | 'carbs_g'
+  | 'fat_g'
+  | 'fiber_g'
+  | 'source'
+  | 'item_label'
 > & { meal_type: MealType }
 
 export interface DailyTotals {
@@ -88,6 +98,28 @@ export function useDailyNutrition() {
     [user, today],
   )
 
+  const addMeals = useCallback(
+    async (entries: NewMealLogEntry[]) => {
+      if (!user || entries.length === 0) return
+      const rows: InsertTables<'meal_logs'>[] = entries.map((entry) => ({
+        user_id: user.id,
+        log_date: today,
+        ...entry,
+      }))
+
+      const { data, error } = await supabase
+        .from('meal_logs')
+        .insert(rows)
+        .select(MEAL_LOG_SELECT)
+
+      if (!error && data) {
+        setMeals((m) => [...m, ...(data as MealLogEntry[])])
+      }
+      return { error }
+    },
+    [user, today],
+  )
+
   const removeMeal = useCallback(
     async (id: string) => {
       const { error } = await supabase.from('meal_logs').delete().eq('id', id)
@@ -118,5 +150,5 @@ export function useDailyNutrition() {
     [meals],
   )
 
-  return { meals, totals, mealsByType, addMeal, removeMeal, loading, reload: fetchMeals }
+  return { meals, totals, mealsByType, addMeal, addMeals, removeMeal, loading, reload: fetchMeals }
 }
