@@ -105,12 +105,20 @@ export function NaturalMealEntry({
     if (!trimmed || parsing) return
     setError(null)
     const outcome = await parse(trimmed)
-    if (!outcome.ok) {
-      // AI unavailable / unparseable → never block logging, drop to manual.
-      onManual(mealType)
+    if (outcome.ok) {
+      setItems(outcome.data.items.map(toEditable))
       return
     }
-    setItems(outcome.data.items.map(toEditable))
+    if (outcome.kind === 'empty') {
+      // Parsed fine but recognised nothing — keep the text, let them retry.
+      setError(
+        outcome.warnings[0] ??
+          "Couldn't recognise those items. Try rephrasing, or enter manually.",
+      )
+      return
+    }
+    // AI unavailable / hard failure → never block logging, drop to manual.
+    onManual(mealType)
   }, [text, parsing, parse, onManual, mealType])
 
   const handleQuantity = useCallback((key: string, quantity: number) => {

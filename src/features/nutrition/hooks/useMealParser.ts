@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 
 export type ParsedSource = 'ifct' | 'ai_estimated' | 'custom'
@@ -38,9 +39,12 @@ export interface ParseResult {
 export type ParseStatus = 'idle' | 'parsing' | 'done' | 'error'
 
 // Discriminated result so callers can branch without inspecting hook state.
+// - 'manual': AI is down / non-200 / network error → drop to manual entry.
+// - 'empty':  request succeeded but nothing was parsed → stay, show a message.
 export type ParseOutcome =
   | { ok: true; data: ParseResult }
-  | { ok: false; manual: boolean }
+  | { ok: false; kind: 'manual' }
+  | { ok: false; kind: 'empty'; warnings: string[] }
 
 export function useMealParser() {
   const [status, setStatus] = useState<ParseStatus>('idle')
@@ -55,24 +59,44 @@ export function useMealParser() {
         body: { text },
       })
 
-      // Non-200 or empty body → treat as a soft failure, offer manual entry.
-      if (error || !data) {
+      // Non-200: read the body for diagnostics, then fall back to manual entry.
+      if (error) {
+        let body: unknown = null
+        if (error instanceof FunctionsHttpError) {
+          try { body = await error.context.json() } catch { /* non-JSON body */ }
+        }
+        console.warn('[parse-meal] request failed', { error, body })
         setStatus('error')
-        return { ok: false, manual: true }
+        return { ok: false, kind: 'manual' }
       }
 
-      // Both providers down, or nothing understood → manual fallback.
-      if (data.manual_entry || data.items.length === 0) {
+      if (!data) {
+        console.warn('[parse-meal] empty response body')
         setStatus('error')
-        return { ok: false, manual: true }
+        return { ok: false, kind: 'manual' }
+      }
+
+      console.info('[parse-meal] result', data)
+
+      // Explicit both-providers-down signal → manual fallback.
+      if (data.manual_entry) {
+        setStatus('error')
+        return { ok: false, kind: 'manual' }
+      }
+
+      // Reachable, but nothing recognised — keep the user on the input screen.
+      if (data.items.length === 0) {
+        setStatus('done')
+        return { ok: false, kind: 'empty', warnings: data.warnings ?? [] }
       }
 
       setResult(data)
       setStatus('done')
       return { ok: true, data }
-    } catch {
+    } catch (e) {
+      console.warn('[parse-meal] threw', e)
       setStatus('error')
-      return { ok: false, manual: true }
+      return { ok: false, kind: 'manual' }
     }
   }, [])
 
