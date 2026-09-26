@@ -62,11 +62,12 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY')
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') // optional -- fallback unavailable if unset
-// Groq rotates model names periodically; make the choice env-overridable so a
-// model rename doesn't require a code edit. `openai/gpt-oss-20b` supports
-// json_mode and is fast/cheap enough for this extraction task. Set GROQ_MODEL
-// to override without redeploying (e.g. if this model is retired too).
-const GROQ_MODEL = Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-20b'
+// Model must reliably honour response_format:json_object with a NESTED schema
+// (items[].ingredients[]). `openai/gpt-oss-20b` is a reasoning model that fails
+// Groq's strict JSON validation on the nested output (json_validate_failed);
+// llama-3.3-70b-versatile handles it cleanly. Env-overridable so a future model
+// rename needs no code edit — but any override MUST support strict json_object.
+const GROQ_MODEL = Deno.env.get('GROQ_MODEL') || 'llama-3.3-70b-versatile'
 const GEMINI_MODEL = Deno.env.get('GEMINI_MODEL') || 'gemini-2.0-flash'
 
 const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
@@ -237,6 +238,9 @@ async function callGroq(text: string): Promise<AiItem[] | null> {
       body: JSON.stringify({
         model: GROQ_MODEL,
         temperature: 0,
+        // Nested ingredient output for a multi-item meal can be long; give it
+        // headroom so the JSON is never cut off mid-structure.
+        max_tokens: 2048,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
