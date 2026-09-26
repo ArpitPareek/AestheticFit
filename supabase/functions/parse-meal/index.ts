@@ -34,7 +34,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 // -- CORS (inlined; mirrors _shared/cors.ts) ----------------------------------
 const ALLOWED_ORIGINS = new Set([
-  'https://aestheticfit.vercel.app',
+  'https://aesthetic-fit-one.vercel.app',
   'http://localhost:5173',
   'http://localhost:4173',
 ])
