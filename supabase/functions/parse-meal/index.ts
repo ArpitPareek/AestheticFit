@@ -147,7 +147,16 @@ Rules:
   user actually stated grams/ml.
 - "estimated_grams": your best-guess TOTAL grams for this line item (quantity * typical serving weight), consistent with the portion defaults above.
 - "estimate_per_100g": your best-guess macros per 100g of this food, ALWAYS include this even if you are confident the food is a well-known one -- it's used only as a fallback. Keep these realistic: per 100 g, calories 0-900, protein/carbs/fat/fibre each 0-100, and calories must roughly equal 4*protein + 4*carbs + 9*fat.
-- "ingredients": for a COOKED or COMPOSITE dish (dal, sabzi, curry, biryani, poha, shake, sandwich, etc.), list its main RAW components with grams for the TOTAL amount eaten, using simple ingredient names our database knows (e.g. "toor dal", "rice", "onion", "sunflower oil", "milk", "sugar", "wheat flour", "paneer", "potato"). Include oil/ghee used in cooking. For a SINGLE whole food (an apple, a boiled egg, plain milk, raw nuts) return "ingredients":[]. Prefer 3-8 ingredients; grams should sum to roughly the dish's total weight.
+- "ingredients": for a COOKED or COMPOSITE dish (dal, sabzi, curry, biryani, poha, shake, sandwich, etc.), list its main RAW components with grams for the TOTAL amount eaten, using simple ingredient names our database knows (e.g. "toor dal", "rice", "onion", "sunflower oil", "milk", "sugar", "wheat flour", "paneer", "potato"). Include oil/ghee used in cooking. For a SINGLE whole food (an apple, a boiled egg, plain milk, raw nuts) return "ingredients":[]. Prefer 3-8 ingredients.
+  Use REALISTIC HOME PORTIONS per serving — do NOT inflate quantities. Reference amounts:
+    * 1 roti/chapati ≈ 30 g wheat flour + 1 g oil.
+    * 1 paratha ≈ 45 g wheat flour + 6 g oil/ghee (stuffed: + ~40 g filling like dal/potato).
+    * 1 katori dal ≈ 30 g dry dal + 5 g oil (cooked it weighs ~150 g, but count the DRY dal).
+    * 1 katori sabzi ≈ 120 g vegetables + 7 g oil.
+    * 1 katori cooked rice ≈ 50 g raw rice.
+    * 1 cup chai ≈ 120 ml milk + 8 g sugar + 2 g tea leaves.
+    * 1 glass shake ≈ 200 ml milk + 15 g sugar + the fruit.
+  For dry staples (flour, dal, rice) list the DRY weight — its macros already account for the cooked dish. Ingredient grams need NOT sum to the cooked weight.
 - No prose, no markdown, no extra keys. If you cannot identify any food, return {"items":[]}.`
 
 class ProviderError extends Error {}
