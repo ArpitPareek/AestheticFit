@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import {
   Apple,
+  BookMarked,
   ChevronDown,
   ChevronUp,
   CookingPot,
@@ -16,6 +17,7 @@ import {
 import { useDailyNutrition, type MealLogEntry, type MealType } from './hooks/useDailyNutrition'
 import { useNutritionTargets } from './hooks/useNutritionTargets'
 import { NaturalMealEntry } from './NaturalMealEntry'
+import { MyFoods } from './MyFoods'
 import {
   FOODS,
   FOOD_CATEGORIES,
@@ -410,6 +412,7 @@ export function MealLogger() {
   const { totals, mealsByType, addMeal, addMeals, removeMeal, loading } = useDailyNutrition()
   const { targets, goalMode, loading: targetsLoading } = useNutritionTargets()
   const [pickerMeal, setPickerMeal] = useState<MealType | null>(null)
+  const [showMyFoods, setShowMyFoods] = useState(false)
 
   const [toast, setToast] = useState<string | null>(null)
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 1500) }
@@ -446,6 +449,17 @@ export function MealLogger() {
 
   return (
     <div className="space-y-4 pb-8">
+      {/* Header row — My Foods entry point */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold text-white">Nutrition</h2>
+        <button
+          onClick={() => setShowMyFoods(true)}
+          className="flex items-center gap-1.5 rounded-xl bg-slate-700/60 px-3 py-1.5 text-xs font-medium text-slate-300 active:bg-slate-700"
+        >
+          <BookMarked size={14} /> My Foods
+        </button>
+      </div>
+
       {/* Protein floor — hero metric */}
       <div className="rounded-2xl bg-card p-4">
         <div className="flex items-baseline justify-between">
@@ -534,6 +548,9 @@ export function MealLogger() {
           onClose={() => setPickerMeal(null)}
         />
       )}
+
+      {/* My Foods manager */}
+      {showMyFoods && <MyFoods onClose={() => setShowMyFoods(false)} />}
 
       {toast && (
         <p className="py-1 text-center text-xs text-red-400">{toast}</p>
