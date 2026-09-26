@@ -88,6 +88,10 @@ type AiItem = {
   ingredients: Ingredient[]
 }
 
+// One resolved component of a composed dish — carries its own macros so the
+// client can re-scale it when the user edits its grams, no server round-trip.
+type ResolvedIngredient = { name: string; grams: number } & Macros
+
 type ResolvedItem = {
   name: string
   quantity: number
@@ -96,6 +100,7 @@ type ResolvedItem = {
   matched_name: string | null
   grams: number
   source: 'library' | 'fuzzy' | 'ai_estimated' | 'composed'
+  ingredients?: ResolvedIngredient[]
 } & Macros
 
 // -- inlined auth (mirrors _shared/auth.ts) -----------------------------------
@@ -370,15 +375,15 @@ type FoodRow = {
 }
 const FOOD_COLS = 'id, name, serving_grams, calories, protein_g, carbs_g, fat_g, fiber_g'
 
-// Exact (case-insensitive) then trigram-fuzzy lookup against food_library.
-// Shared by whole-item matching and per-ingredient decomposition.
-async function findLibraryFood(
-  query: string,
-): Promise<{ food: FoodRow; source: 'library' | 'fuzzy'; similarity: number } | null> {
-  const { data: exact } = await serviceClient
+// Exact, case-insensitive name match — trusted and stable (no per-run drift).
+async function findExactFood(query: string): Promise<FoodRow | null> {
+  const { data } = await serviceClient
     .from('food_library').select(FOOD_COLS).ilike('name', query.trim()).limit(2)
-  if (exact && exact.length === 1) return { food: exact[0] as FoodRow, source: 'library', similarity: 1 }
+  return data && data.length === 1 ? (data[0] as FoodRow) : null
+}
 
+// Trigram fuzzy match.
+async function findFuzzyFood(query: string): Promise<{ food: FoodRow; similarity: number } | null> {
   const { data: fuzzy, error } = await serviceClient.rpc('match_food_fuzzy', {
     p_query: normalizeName(query), p_limit: 1,
   })
@@ -386,9 +391,33 @@ async function findLibraryFood(
   const top = Array.isArray(fuzzy) ? fuzzy[0] : null
   if (top && top.similarity >= FUZZY_MIN_SIMILARITY) {
     const { data: fl } = await serviceClient.from('food_library').select(FOOD_COLS).eq('id', top.food_id).maybeSingle()
-    if (fl) return { food: fl as FoodRow, source: 'fuzzy', similarity: Number(top.similarity) }
+    if (fl) return { food: fl as FoodRow, similarity: Number(top.similarity) }
   }
   return null
+}
+
+// Best available match for an ingredient name (exact, then fuzzy).
+async function findLibraryFood(query: string): Promise<FoodRow | null> {
+  return (await findExactFood(query)) ?? (await findFuzzyFood(query))?.food ?? null
+}
+
+// Build a resolved item from a matched library food (shared by exact + fuzzy).
+async function buildMatched(
+  item: AiItem, food: FoodRow, source: 'library' | 'fuzzy', warnings: string[],
+): Promise<ResolvedItem> {
+  const { grams, usedDefaultServing } = await gramsForMatchedFood(
+    food.id, Number(food.serving_grams), item.unit, item.quantity, item.estimated_grams,
+  )
+  if (usedDefaultServing) warnings.push(`no_portion_data:${item.name}:${item.unit}`)
+  const macros = scaleMacros(
+    { calories: Number(food.calories), protein_g: Number(food.protein_g), carbs_g: Number(food.carbs_g), fat_g: Number(food.fat_g), fiber_g: Number(food.fiber_g) },
+    Number(food.serving_grams), grams,
+  )
+  return {
+    name: item.name, quantity: item.quantity, unit: item.unit,
+    matched_food_id: food.id, matched_name: food.name, grams,
+    source, ...macros,
+  }
 }
 
 function perGram(food: FoodRow): Macros {
@@ -411,24 +440,31 @@ async function decompose(item: AiItem, warnings: string[]): Promise<ResolvedItem
   const ings = item.ingredients
   if (!ings || ings.length < 2) return null
 
+  const round1 = (n: number) => Math.round(n * 10) / 10
   let totalGrams = 0
   let matchedGrams = 0
   const sum: Macros = { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 }
+  const parts: ResolvedIngredient[] = []
   for (const ing of ings) {
     totalGrams += ing.grams
     const found = await findLibraryFood(ing.name)
     if (!found) continue
-    const pg = perGram(found.food)
-    sum.calories += pg.calories * ing.grams
-    sum.protein_g += pg.protein_g * ing.grams
-    sum.carbs_g += pg.carbs_g * ing.grams
-    sum.fat_g += pg.fat_g * ing.grams
-    sum.fiber_g += pg.fiber_g * ing.grams
+    const pg = perGram(found)
+    const m = {
+      calories: pg.calories * ing.grams, protein_g: pg.protein_g * ing.grams,
+      carbs_g: pg.carbs_g * ing.grams, fat_g: pg.fat_g * ing.grams, fiber_g: pg.fiber_g * ing.grams,
+    }
+    sum.calories += m.calories; sum.protein_g += m.protein_g
+    sum.carbs_g += m.carbs_g; sum.fat_g += m.fat_g; sum.fiber_g += m.fiber_g
     matchedGrams += ing.grams
+    parts.push({
+      name: found.name, grams: Math.round(ing.grams),
+      calories: round1(m.calories), protein_g: round1(m.protein_g),
+      carbs_g: round1(m.carbs_g), fat_g: round1(m.fat_g), fiber_g: round1(m.fiber_g),
+    })
   }
   if (totalGrams <= 0 || matchedGrams / totalGrams < DECOMP_MIN_MATCH_RATIO) return null
 
-  const round1 = (n: number) => Math.round(n * 10) / 10
   // Display grams = the eaten/cooked weight the model estimated, NOT the sum of
   // dry ingredient weights (staples are counted dry, so that sum understates the
   // real portion — e.g. 37 g for two parathas). Macros still come from the
@@ -441,39 +477,31 @@ async function decompose(item: AiItem, warnings: string[]): Promise<ResolvedItem
     source: 'composed',
     calories: round1(sum.calories), protein_g: round1(sum.protein_g),
     carbs_g: round1(sum.carbs_g), fat_g: round1(sum.fat_g), fiber_g: round1(sum.fiber_g),
+    ingredients: parts,
   }
 }
 
 async function resolveItem(item: AiItem, warnings: string[]): Promise<ResolvedItem> {
   const normalized = normalizeName(item.name)
 
-  // 0. Cooked/composite dish with known raw ingredients → sum them from the DB.
-  //    Most accurate path for home food; only used when the mass mostly matches.
+  // 1. Exact library match wins first — calibrated seed/IFCT values are stable
+  //    run-to-run (no AI portion drift). e.g. "dal fry", "chai", "roti".
+  const exact = await findExactFood(item.name)
+  if (exact) return buildMatched(item, exact, 'library', warnings)
+
+  // 2. Otherwise, if it's a composite dish with ingredients, sum them from the
+  //    DB — accurate for home food the library doesn't have as one row.
   const composed = await decompose(item, warnings)
   if (composed) return composed
 
-  // 1. Whole-item match against food_library (exact, then trigram fuzzy).
-  const match = await findLibraryFood(item.name)
-  if (match) {
-    if (match.source === 'fuzzy' && match.similarity < 0.6) {
-      warnings.push(`low_confidence_match:${item.name}->${match.food.name}`)
-    }
-    const { grams, usedDefaultServing } = await gramsForMatchedFood(
-      match.food.id, Number(match.food.serving_grams), item.unit, item.quantity, item.estimated_grams,
-    )
-    if (usedDefaultServing) warnings.push(`no_portion_data:${item.name}:${item.unit}`)
-    const macros = scaleMacros(
-      { calories: Number(match.food.calories), protein_g: Number(match.food.protein_g), carbs_g: Number(match.food.carbs_g), fat_g: Number(match.food.fat_g), fiber_g: Number(match.food.fiber_g) },
-      Number(match.food.serving_grams), grams,
-    )
-    return {
-      name: item.name, quantity: item.quantity, unit: item.unit,
-      matched_food_id: match.food.id, matched_name: match.food.name, grams,
-      source: match.source, ...macros,
-    }
+  // 3. Fuzzy whole-item match.
+  const fuzzy = await findFuzzyFood(item.name)
+  if (fuzzy) {
+    if (fuzzy.similarity < 0.6) warnings.push(`low_confidence_match:${item.name}->${fuzzy.food.name}`)
+    return buildMatched(item, fuzzy.food, 'fuzzy', warnings)
   }
 
-  // 2. Previously cached AI estimate (dedup by normalized_name).
+  // 4. Previously cached AI estimate (dedup by normalized_name).
   const { data: cached } = await serviceClient
     .from('ai_food_estimates')
     .select('id, name, serving_grams, calories, protein_g, carbs_g, fat_g, fiber_g')
@@ -538,6 +566,7 @@ type WireItem = {
   grams: number
   source: 'ifct' | 'ai_estimated'
   matched: boolean
+  ingredients?: ResolvedIngredient[]
 } & Macros
 
 function toWireItem(it: ResolvedItem): WireItem {
@@ -561,6 +590,7 @@ function toWireItem(it: ResolvedItem): WireItem {
     carbs_g: it.carbs_g,
     fat_g: it.fat_g,
     fiber_g: it.fiber_g,
+    ingredients: it.ingredients,
   }
 }
 

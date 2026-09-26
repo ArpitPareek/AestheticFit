@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Apple, CookingPot, Pencil, Sparkles, Sunrise, Utensils, X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import type { MealType, NewMealLogEntry } from './hooks/useDailyNutrition'
-import { useMealParser, type ParsedItem } from './hooks/useMealParser'
+import { useMealParser, type ParsedIngredient, type ParsedItem } from './hooks/useMealParser'
 import { findCustomFoodId, promoteAiFood } from './promoteAiFood'
 
 const MEAL_OPTIONS: { type: MealType; label: string; icon: typeof Sunrise }[] = [
@@ -58,6 +58,31 @@ interface EditableItem {
   custom_food_id: string | null
   source: ParsedItem['source']
   matched: boolean
+  // Composed dishes: editable ingredient breakdown. When present, the item's
+  // macros are the SUM of these (grams × perGram), not perUnit × quantity.
+  ingredients?: EditableIngredient[]
+}
+
+interface EditableIngredient {
+  name: string
+  grams: number
+  // Per-gram macros, so editing grams rescales the ingredient live.
+  perGram: { calories: number; protein_g: number; carbs_g: number; fat_g: number; fiber_g: number }
+}
+
+function toEditableIngredient(ing: ParsedIngredient): EditableIngredient {
+  const g = ing.grams > 0 ? ing.grams : 1
+  return {
+    name: ing.name,
+    grams: Math.round(ing.grams),
+    perGram: {
+      calories: ing.calories / g,
+      protein_g: ing.protein_g / g,
+      carbs_g: ing.carbs_g / g,
+      fat_g: ing.fat_g / g,
+      fiber_g: ing.fiber_g / g,
+    },
+  }
 }
 
 function toEditable(raw: ParsedItem, index: number): EditableItem {
@@ -80,6 +105,7 @@ function toEditable(raw: ParsedItem, index: number): EditableItem {
     custom_food_id: raw.custom_food_id ?? null,
     source: raw.source,
     matched: raw.matched,
+    ingredients: raw.ingredients?.length ? raw.ingredients.map(toEditableIngredient) : undefined,
   }
 }
 
@@ -98,13 +124,41 @@ function portionLabel(it: EditableItem): string {
   return grams > 0 && !isWeight ? `${base} (≈${grams} g)` : base
 }
 
+// Total macros for the item as currently configured. Composed dishes sum their
+// (editable) ingredients; everything else is perUnit × quantity.
 function scaled(it: EditableItem) {
+  if (it.ingredients && it.ingredients.length > 0) {
+    return it.ingredients.reduce(
+      (acc, ing) => ({
+        calories: acc.calories + ing.grams * ing.perGram.calories,
+        protein_g: acc.protein_g + ing.grams * ing.perGram.protein_g,
+        carbs_g: acc.carbs_g + ing.grams * ing.perGram.carbs_g,
+        fat_g: acc.fat_g + ing.grams * ing.perGram.fat_g,
+        fiber_g: acc.fiber_g + ing.grams * ing.perGram.fiber_g,
+      }),
+      { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 },
+    )
+  }
   return {
     calories: it.perUnit.calories * it.quantity,
     protein_g: it.perUnit.protein_g * it.quantity,
     carbs_g: it.perUnit.carbs_g * it.quantity,
     fat_g: it.perUnit.fat_g * it.quantity,
     fiber_g: it.perUnit.fiber_g * it.quantity,
+  }
+}
+
+// Per-single-unit macros for promotion to custom_foods (uses live totals so an
+// edited breakdown is what gets saved).
+function perUnitFromScaled(it: EditableItem) {
+  const s = scaled(it)
+  const q = it.quantity > 0 ? it.quantity : 1
+  return {
+    calories: s.calories / q,
+    protein_g: s.protein_g / q,
+    carbs_g: s.carbs_g / q,
+    fat_g: s.fat_g / q,
+    fiber_g: s.fiber_g / q,
   }
 }
 
@@ -123,6 +177,7 @@ export function NaturalMealEntry({
   const [items, setItems] = useState<EditableItem[] | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [openBreakdown, setOpenBreakdown] = useState<string | null>(null)
 
   // Persist the in-progress draft so a background tab-discard / reload doesn't
   // lose a half-typed meal. Cleared once the text is emptied (after logging).
@@ -185,6 +240,23 @@ export function NaturalMealEntry({
     )
   }, [])
 
+  const handleIngredientGrams = useCallback((key: string, index: number, grams: number) => {
+    setItems((prev) =>
+      prev
+        ? prev.map((it) =>
+            it.key === key && it.ingredients
+              ? {
+                  ...it,
+                  ingredients: it.ingredients.map((ing, i) =>
+                    i === index ? { ...ing, grams: grams >= 0 ? grams : 0 } : ing,
+                  ),
+                }
+              : it,
+          )
+        : prev,
+    )
+  }, [])
+
   const handleRemove = useCallback((key: string) => {
     setItems((prev) => (prev ? prev.filter((it) => it.key !== key) : prev))
   }, [])
@@ -217,11 +289,12 @@ export function NaturalMealEntry({
       // Resolve a library reference when the parse didn't hand us an id.
       if (!foodId && !customFoodId) {
         if (it.source === 'ai_estimated') {
-          // F4: promote to the user's custom_foods (idempotent).
+          // F4: promote to the user's custom_foods (idempotent). Use live
+          // per-unit macros so an edited ingredient breakdown is what's saved.
           customFoodId = await promoteAiFood(user.id, {
             name: it.name,
             unit: it.unit,
-            perUnit: it.perUnit,
+            perUnit: perUnitFromScaled(it),
           })
         } else if (it.source === 'custom') {
           customFoodId = await findCustomFoodId(user.id, it.name)
@@ -394,20 +467,58 @@ export function NaturalMealEntry({
                     </span>
                   </div>
 
-                  {/* Inline quantity edit */}
-                  <div className="flex items-center gap-1">
-                    <Pencil size={11} className="text-slate-600" />
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      min={0}
-                      step={0.25}
-                      value={it.quantity}
-                      onChange={(e) => handleQuantity(it.key, Number(e.target.value))}
-                      className="w-14 rounded-lg bg-slate-700 px-2 py-1 text-right text-xs text-white outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
+                  {/* Composed dish → adjust ingredients; else adjust quantity */}
+                  {it.ingredients && it.ingredients.length > 0 ? (
+                    <button
+                      onClick={() => setOpenBreakdown((k) => (k === it.key ? null : it.key))}
+                      className="flex items-center gap-1 rounded-lg bg-slate-700 px-2 py-1 text-[11px] font-medium text-slate-300 active:bg-slate-600"
+                    >
+                      <Pencil size={11} /> {openBreakdown === it.key ? 'Done' : 'Adjust'}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <Pencil size={11} className="text-slate-600" />
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min={0}
+                        step={0.25}
+                        value={it.quantity}
+                        onChange={(e) => handleQuantity(it.key, Number(e.target.value))}
+                        className="w-14 rounded-lg bg-slate-700 px-2 py-1 text-right text-xs text-white outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                  )}
                 </div>
+
+                {/* Editable ingredient breakdown for composed dishes */}
+                {it.ingredients && it.ingredients.length > 0 && openBreakdown === it.key && (
+                  <div className="mt-2 space-y-1.5 rounded-lg bg-slate-900/40 p-2.5">
+                    <p className="text-[10px] uppercase tracking-wide text-slate-500">
+                      Ingredients — tweak grams to match what you ate
+                    </p>
+                    {it.ingredients.map((ing, idx) => (
+                      <div key={`${ing.name}-${idx}`} className="flex items-center justify-between gap-2">
+                        <span className="min-w-0 flex-1 truncate text-xs text-slate-300">{ing.name}</span>
+                        <span className="text-[10px] text-slate-500">
+                          {Math.round(ing.grams * ing.perGram.calories)} cal
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            min={0}
+                            step={5}
+                            value={ing.grams}
+                            onChange={(e) => handleIngredientGrams(it.key, idx, Number(e.target.value))}
+                            className="w-16 rounded-lg bg-slate-700 px-2 py-1 text-right text-xs text-white outline-none focus:ring-1 focus:ring-emerald-500"
+                          />
+                          <span className="text-[10px] text-slate-500">g</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })}

@@ -4,6 +4,18 @@ import { supabase } from '../../../lib/supabase'
 
 export type ParsedSource = 'ifct' | 'ai_estimated' | 'custom'
 
+// One resolved component of a composed dish, with its own macros so the client
+// can re-scale it when the user edits its grams.
+export interface ParsedIngredient {
+  name: string
+  grams: number
+  calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
+  fiber_g: number
+}
+
 export interface ParsedItem {
   name: string
   quantity: number
@@ -21,6 +33,8 @@ export interface ParsedItem {
   fiber_g: number
   source: ParsedSource
   matched: boolean
+  // Present for composed dishes — the editable ingredient breakdown.
+  ingredients?: ParsedIngredient[]
 }
 
 export interface ParseTotals {
@@ -61,6 +75,10 @@ interface RawParsedItem {
   fiber_g?: number
   source?: string
   matched?: boolean
+  ingredients?: Array<{
+    name?: string; grams?: number
+    calories?: number; protein_g?: number; carbs_g?: number; fat_g?: number; fiber_g?: number
+  }>
 }
 
 interface RawParseResponse {
@@ -100,6 +118,19 @@ function normalizeItem(raw: RawParsedItem): ParsedItem {
     fiber_g: num(raw.fiber_g),
     source,
     matched: raw.matched ?? foodId != null,
+    ingredients: Array.isArray(raw.ingredients)
+      ? raw.ingredients
+          .filter((g) => typeof g.name === 'string' && (g.name ?? '').trim().length > 0)
+          .map((g) => ({
+            name: (g.name ?? '').trim(),
+            grams: num(g.grams),
+            calories: num(g.calories),
+            protein_g: num(g.protein_g),
+            carbs_g: num(g.carbs_g),
+            fat_g: num(g.fat_g),
+            fiber_g: num(g.fiber_g),
+          }))
+      : undefined,
   }
 }
 
