@@ -133,6 +133,7 @@ Return ONLY a JSON object of the exact shape:
 {"items":[{"name":string,"quantity":number,"unit":string,"estimated_grams":number,"estimate_per_100g":{"calories":number,"protein_g":number,"carbs_g":number,"fat_g":number,"fiber_g":number},"ingredients":[{"name":string,"grams":number}]}]}
 
 Rules:
+- Extract EVERY food and drink the user mentions as its OWN separate item. Never merge two foods into one, and never omit one (e.g. "2 paratha and 1 chai" MUST return two items).
 - "name": the food's common name (e.g. "toor dal", "roti", "paneer tikka").
 - "quantity": the number of "unit"s mentioned (default 1 if not stated).
 - "unit": one of piece, katori, small_katori, plate, glass, cup, tbsp, tsp, g, kg, ml -- pick the closest one; if grams/ml are stated use those directly.
@@ -428,10 +429,15 @@ async function decompose(item: AiItem, warnings: string[]): Promise<ResolvedItem
   if (totalGrams <= 0 || matchedGrams / totalGrams < DECOMP_MIN_MATCH_RATIO) return null
 
   const round1 = (n: number) => Math.round(n * 10) / 10
+  // Display grams = the eaten/cooked weight the model estimated, NOT the sum of
+  // dry ingredient weights (staples are counted dry, so that sum understates the
+  // real portion — e.g. 37 g for two parathas). Macros still come from the
+  // authoritative dry-ingredient sum above.
+  const displayGrams = item.estimated_grams > 0 ? Math.round(item.estimated_grams) : Math.round(totalGrams)
   warnings.push(`composed:${item.name}(${Math.round((matchedGrams / totalGrams) * 100)}%)`)
   return {
     name: item.name, quantity: item.quantity, unit: item.unit,
-    matched_food_id: null, matched_name: item.name, grams: Math.round(totalGrams),
+    matched_food_id: null, matched_name: item.name, grams: displayGrams,
     source: 'composed',
     calories: round1(sum.calories), protein_g: round1(sum.protein_g),
     carbs_g: round1(sum.carbs_g), fat_g: round1(sum.fat_g), fiber_g: round1(sum.fiber_g),
