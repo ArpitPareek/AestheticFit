@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, Check, ChevronDown, Clock, Dumbbell, Minus, RefreshCw } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, ChevronDown, Clock, Dumbbell, Minus, RefreshCw, SquarePlay } from 'lucide-react'
 import type { ExerciseSet, PlanExerciseEntry, PlanOverloadRules } from '../../lib/types'
 import type { PlanSlotExercise } from './planTypes'
 import { getRecommendation, setComparison } from './ProgressEngine'
 import type { ExerciseCues, ExerciseDetail } from './hooks/useExerciseDetails'
 import type { ExerciseHistory } from './hooks/useExerciseHistory'
+import { ExerciseMedia } from './ExerciseMedia'
+
+/** Best available YouTube link: the exact video, the seeded search, else a name-based search. */
+function youtubeUrl(name: string, detail?: ExerciseDetail): string {
+  if (detail?.youtube_id) return `https://www.youtube.com/watch?v=${detail.youtube_id}`
+  if (detail?.youtube_search_url) return detail.youtube_search_url
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${name} exercise form technique`)}`
+}
 
 // getRecommendation ignores overloadRules (kept for signature compat).
 const NO_OVERLOAD: PlanOverloadRules = {
@@ -225,10 +233,19 @@ export function SessionExerciseCard({ slot, orderIndex, details, history, isDelo
         <div className="space-y-3 border-t border-white/5 px-3 pb-4 pt-3">
           {detail?.gif_url && (
             <figure>
-              <img src={detail.gif_url} alt={name} loading="lazy" className="max-h-64 w-full rounded-lg bg-black/20 object-contain" />
+              <ExerciseMedia src={detail.gif_url} alt={name} className="max-h-64 w-full rounded-lg bg-black/20 object-contain" />
               {detail.media_attribution && <figcaption className="mt-1 text-[10px] text-slate-600">Demo image: {detail.media_attribution}</figcaption>}
             </figure>
           )}
+
+          <a
+            href={youtubeUrl(name, detail)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-300 transition-colors hover:bg-red-500/20"
+          >
+            <SquarePlay size={16} /> Watch on YouTube
+          </a>
 
           <div className="flex flex-wrap items-center gap-1.5">
             {detail && (

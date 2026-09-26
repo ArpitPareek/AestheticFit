@@ -8,6 +8,9 @@ import { useWorkoutLogger } from './hooks/useWorkoutLogger'
 import { SessionExerciseCard, isPrehabSlot } from './SessionExerciseCard'
 import { coachPhaseStatus, weekWithinPhase, weekdayName, planDayIndexForDate } from './planProgress'
 import { PhaseAdvanceBanner } from './PhaseAdvanceBanner'
+import { WarmupStretchCard } from './WarmupStretchCard'
+import { useSessionPrep } from './hooks/useSessionPrep'
+import { routineForDay } from '../../lib/constants/warmupStretch'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 // Local-timezone calendar date — matches useWorkoutLogger (never UTC toISOString).
@@ -69,6 +72,8 @@ export function TodayWorkout() {
   const { details } = useExerciseDetails(ids)
   const { history } = useExerciseHistory(ids)
   const logger = useWorkoutLogger(activePlan?.id ?? null, dayPlan?.label ?? '', selectedDate)
+  const prep = useSessionPrep(selectedDate, dayPlan?.label ?? '')
+  const routine = dayPlan ? routineForDay(dayPlan.label) : null
   const [summary, setSummary] = useState<{ duration: number; totalVolume: number; exerciseCount: number } | null>(null)
   const [prehabConfirm, setPrehabConfirm] = useState(false)
 
@@ -207,6 +212,10 @@ export function TodayWorkout() {
             </p>
           </div>
 
+          {routine && (
+            <WarmupStretchCard kind="warmup" items={routine.warmup} done={prep.done.warmup} onToggle={prep.toggle} />
+          )}
+
           <div className="space-y-2">
             {dayPlan.exercises.map((slot, i) => (
               <SessionExerciseCard
@@ -222,6 +231,10 @@ export function TodayWorkout() {
               />
             ))}
           </div>
+
+          {routine && (
+            <WarmupStretchCard kind="cooldown" items={routine.cooldown} done={prep.done.cooldown} onToggle={prep.toggle} />
+          )}
 
           {summary ? (
             <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center">

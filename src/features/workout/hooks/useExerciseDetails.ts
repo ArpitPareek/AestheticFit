@@ -22,10 +22,12 @@ export interface ExerciseDetail {
   gif_url: string | null
   contraindications: string[]
   media_attribution: string | null
+  youtube_id: string | null
+  youtube_search_url: string | null
 }
 
 const COLS =
-  'id, name, primary_muscle, secondary_muscles, movement_pattern, equipment, difficulty, cues, gif_url, contraindications, media_attribution'
+  'id, name, primary_muscle, secondary_muscles, movement_pattern, equipment, difficulty, cues, gif_url, contraindications, media_attribution, youtube_id, youtube_search_url'
 
 /**
  * Resolves exercise_library ids -> full detail rows (cues, gif, muscles, …) for
@@ -64,6 +66,8 @@ export function useExerciseDetails(ids: string[]) {
             gif_url: (r.gif_url as string | null) ?? null,
             contraindications: (r.contraindications as string[]) ?? [],
             media_attribution: (r.media_attribution as string | null) ?? null,
+            youtube_id: (r.youtube_id as string | null) ?? null,
+            youtube_search_url: (r.youtube_search_url as string | null) ?? null,
           }
         }
         setDetails(map)

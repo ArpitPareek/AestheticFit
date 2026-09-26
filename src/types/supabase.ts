@@ -99,6 +99,11 @@ export interface Database {
           intensity: string
           notes: string | null
           created_at: string
+          activity_key: string | null
+          distance_km: number | null
+          calories: number | null
+          calories_source: string | null
+          rpe: number | null
         }
         Insert: {
           id?: string
@@ -109,6 +114,11 @@ export interface Database {
           intensity: string
           notes?: string | null
           created_at?: string
+          activity_key?: string | null
+          distance_km?: number | null
+          calories?: number | null
+          calories_source?: string | null
+          rpe?: number | null
         }
         Update: {
           id?: string
@@ -119,6 +129,11 @@ export interface Database {
           intensity?: string
           notes?: string | null
           created_at?: string
+          activity_key?: string | null
+          distance_km?: number | null
+          calories?: number | null
+          calories_source?: string | null
+          rpe?: number | null
         }
         Relationships: [
           {
@@ -129,6 +144,36 @@ export interface Database {
             referencedColumns: ["id"]
           },
         ]
+      }
+      session_prep_logs: {
+        Row: {
+          id: string
+          user_id: string
+          log_date: string
+          day_label: string
+          kind: string
+          completed_keys: string[]
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          log_date: string
+          day_label: string
+          kind: string
+          completed_keys?: string[]
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          log_date?: string
+          day_label?: string
+          kind?: string
+          completed_keys?: string[]
+          updated_at?: string
+        }
+        Relationships: []
       }
       custom_exercises: {
         Row: {

@@ -1,12 +1,12 @@
 # AestheticFit v5 — Pre-Departure Checklist
 
-Last updated: 2026-09-23
+Last updated: 2026-09-26
 
 ---
 
 ## 1. Migration Run Order
 
-Migrations 001–020 are already applied in production. Run **021–031** in order,
+Migrations 001–020 are already applied in production. Run **021–045** in order,
 each as a single whole-file paste into the **Supabase SQL Editor** (Dashboard >
 SQL Editor > New query > paste > Run). Do NOT split a file at `;` — several
 contain dollar-quoted blocks that break naive splitters.
@@ -24,6 +24,20 @@ contain dollar-quoted blocks that break naive splitters.
 | 029 | `029_prehab_skipped.sql` | Adds `prehab_skipped` boolean column to `workout_logs`. |
 | 030 | `030_cardio_logs.sql` | Creates `cardio_logs` table with RLS. |
 | 031 | `031_fix_nutrition_targets.sql` | Corrects protein/calorie config values for both users. |
+| 032 | `032_fix_plan_start_date.sql` | Corrects Phase-1 `start_date` from 2026-09-23 to 2026-09-24 for both users. |
+| 033 | `033_rls_hardening.sql` | Belt-and-suspenders: ensures RLS is active on every app table. |
+| 034 | `034_rate_limiter.sql` | Per-user, per-bucket rate-limiting table for Edge Functions. |
+| 035 | `035_date_repair.sql` | One-time repair for rows logged 00:00–05:30 IST stored under the wrong local date. |
+| 036 | `036_meal_food_id.sql` | Ensures `meal_logs.food_id` (nullable FK → `food_library`) exists. |
+| 037 | `037_skin_checkins_unique.sql` | De-dupes then adds `UNIQUE(user_id, checkin_date)` to `skin_checkins`. |
+| 038 | `038_activate_plan_rpc.sql` | Atomic plan-activation RPC (deactivate all, activate target). |
+| 039 | `039_drop_orphan_cols.sql` | Drops four `profiles` columns superseded by the JSONB assessment shape. |
+| 040 | `040_indexes.sql` | Indexes on hot-path queries (per-table primary access pattern). |
+| 041 | `041_food_data.sql` | F1 — food data foundations: portion conversions, alias table, shared helpers. |
+| 042 | `042_food_id_backfill.sql` | B2b — backfills historical `meal_logs.food_id` against `food_library`. |
+| 043 | `043_food_match_fn.sql` | F2 support — trigram fuzzy-match RPC for the parse-meal edge function. |
+| 044 | `044_cardio_logs_robust.sql` | Adds `activity_key`, `distance_km`, `calories`, `calories_source`, `rpe` to `cardio_logs` (MET-based estimation + distance/pace + RPE). |
+| 045 | `045_session_prep_logs.sql` | Creates `session_prep_logs` table + RLS for warm-up/stretch check-off tracking. |
 
 **Rollback**: every migration has rollback SQL in a header comment. To undo,
 copy the rollback block and run it in the SQL Editor.
@@ -71,8 +85,10 @@ User ID: `be213280-323e-40f8-a6f5-3f6c1f84a92b`
    - "Plan · Phase 1 of 4 · Week W" (W = correct week since start_date).
    - Day label matches today's preferred weekday schedule.
 3. **Log a session**:
-   - Expand any exercise card → verify demo image + cues load.
+   - **Warm-up card** (above exercises) → check off items in order; the done/total badge updates and the state survives a reload (persisted to `session_prep_logs`).
+   - Expand any exercise card → verify the demo animates between the two frames (0.jpg/1.jpg) and the "Watch on YouTube" link opens a search/video.
    - Log 3 sets of an exercise (e.g. 60kg x 10 x RIR2) → tap "Save sets" → green checkmark count updates.
+   - **Cool-down / stretch card** (below exercises) → check off a stretch; verify it persists.
    - **Swap test**: expand another exercise → "Swap exercise" → pick an alternative → select a reason → log sets → save.
    - Verify face-pull or reverse-fly prehab card is present (mandatory for A).
    - Tap "Finish workout" **without** logging prehab → amber "Prehab not logged" warning appears. Tap "Go back and log" → log prehab → "Finish workout" → green summary card.
@@ -83,6 +99,7 @@ User ID: `be213280-323e-40f8-a6f5-3f6c1f84a92b`
    - Weight/tape: enter today's weight + waist. For A, hip/bust fields may be hidden or optional — that's correct.
    - 28-day moving average readout appears once enough data exists.
    - Lift progress: shows est-1RM chart for logged lifts (may be empty if first session).
+   - **Cardio**: "Log cardio session" → pick an activity (e.g. Cricket) → calories auto-estimate from bodyweight × MET; for a walk/run/cycle, distance shows a min/km pace; RPE sets intensity; a device number can override the estimate; backdating to a recent day works.
    - Photo reminder: if 4+ weeks since last photo, a nudge is visible.
 6. **Phase-advance banner** (only when phase_weeks are exhausted):
    - When the phase's weeks have elapsed, a persistent amber banner appears at the top: "Phase 1 complete — ready to advance?"

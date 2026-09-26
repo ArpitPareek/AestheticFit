@@ -4,6 +4,7 @@ import { useAuth } from '../../auth/AuthContext'
 import { localTodayISO, localDateISO } from '../../../lib/utils'
 
 export type CardioIntensity = 'zone2' | 'low' | 'moderate' | 'high'
+export type CaloriesSource = 'estimated' | 'measured'
 
 export interface CardioLog {
   id: string
@@ -12,7 +13,27 @@ export interface CardioLog {
   minutes: number
   intensity: CardioIntensity
   notes: string | null
+  activity_key: string | null
+  distance_km: number | null
+  calories: number | null
+  calories_source: CaloriesSource | null
+  rpe: number | null
 }
+
+export interface CardioEntry {
+  type: string
+  minutes: number
+  intensity: CardioIntensity
+  notes?: string
+  activity_key?: string | null
+  distance_km?: number | null
+  calories?: number | null
+  calories_source?: CaloriesSource | null
+  rpe?: number | null
+  log_date?: string // defaults to today; set to backdate a session
+}
+
+const COLS = 'id, log_date, type, minutes, intensity, notes, activity_key, distance_km, calories, calories_source, rpe'
 
 function isoWeekBounds(d: Date): { start: string; end: string } {
   const day = d.getDay()
@@ -35,10 +56,11 @@ export function useCardioLogs() {
     setLoading(true)
     const { data } = await supabase
       .from('cardio_logs')
-      .select('id, log_date, type, minutes, intensity, notes')
+      .select(COLS)
       .eq('user_id', user.id)
       .gte('log_date', weekStart)
       .lte('log_date', weekEnd)
+      .order('log_date', { ascending: false })
       .order('created_at', { ascending: false })
     setWeekLogs((data as CardioLog[] | null) ?? [])
     setLoading(false)
@@ -46,21 +68,21 @@ export function useCardioLogs() {
 
   useEffect(() => { load() }, [load])
 
-  const logSession = useCallback(async (entry: {
-    type: string
-    minutes: number
-    intensity: CardioIntensity
-    notes?: string
-  }): Promise<{ error: string | null }> => {
+  const logSession = useCallback(async (entry: CardioEntry): Promise<{ error: string | null }> => {
     if (!user) return { error: 'Not signed in' }
     setSaving(true)
     const { error } = await supabase.from('cardio_logs').insert({
       user_id: user.id,
-      log_date: localTodayISO(),
+      log_date: entry.log_date ?? localTodayISO(),
       type: entry.type,
       minutes: entry.minutes,
       intensity: entry.intensity,
       notes: entry.notes ?? null,
+      activity_key: entry.activity_key ?? null,
+      distance_km: entry.distance_km ?? null,
+      calories: entry.calories ?? null,
+      calories_source: entry.calories_source ?? null,
+      rpe: entry.rpe ?? null,
     })
     setSaving(false)
     if (error) return { error: error.message }
@@ -77,6 +99,7 @@ export function useCardioLogs() {
   }, [user, load])
 
   const zone2Count = weekLogs.filter(l => l.intensity === 'zone2').length
+  const weeklyCalories = weekLogs.reduce((sum, l) => sum + (l.calories ?? 0), 0)
 
-  return { weekLogs, zone2Count, loading, saving, logSession, deleteSession, reload: load }
+  return { weekLogs, zone2Count, weeklyCalories, loading, saving, logSession, deleteSession, reload: load }
 }

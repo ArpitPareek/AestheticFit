@@ -5,6 +5,12 @@
 > inconsistencies, and bugs. Written to be handed to an LLM for analysis and prioritization.
 >
 > Generated from a full read of the codebase. Paths are relative to the repo root.
+>
+> **Last refreshed: 2026-09-26** — for migrations through **045**. Since the original snapshot the
+> workout set-logging flow, in-session swaps, weekday scheduling, per-exercise progression
+> recommendations, animated exercise demos + YouTube links, per-day warm-up/stretch checklists, and a
+> MET-based cardio revamp are all now **live** (see §5.2, §5.6). Sections describing those as
+> "orphaned/read-only" have been corrected.
 
 ---
 
@@ -15,11 +21,13 @@ combines **workout programming, nutrition/calorie tracking, weight tracking, ski
 daily habit tracking, and a dashboard**. It is a React + TypeScript + Vite frontend on a Supabase
 (Postgres + Auth + RLS + Edge Functions) backend, deployed to Vercel, installable as a PWA.
 
-The app is **mid-refactor** from an older single-file HTML prototype into a structured full-stack
-app. Several subsystems are **half-migrated**: a new data-driven workout generator is live, but an
-older plan shape, a rich set-logging flow, and an adaptive nutrition engine are only partially
-wired. The most important structural theme for any reviewer is **"old shape vs new shape"
-duplication** and **features that exist in the backend/hooks but have no UI**.
+The app was refactored from an older single-file HTML prototype (`aestheticfit.html`, kept only as
+historical reference) into a structured full-stack app. The data-driven workout generator, the full
+set-logging flow (sets/reps/RIR, in-session swaps, progression recommendations, warm-up/stretch
+check-off), and coach-authored phased plans are all live. Still backend-only: the **adaptive
+nutrition (TDEE) engine** runs on a cron with no user-facing UI. Remaining structural themes for a
+reviewer: some **legacy "old shape" types** in `lib/types.ts` linger unused, and a few backend
+capabilities (custom foods/recipes, adaptive targets) have no frontend yet.
 
 ---
 
@@ -131,17 +139,16 @@ ProfileProvider is inside ProtectedRoute so it only mounts once a user exists.
 ## 4. Data Model (Supabase)
 
 ### 4.1 Migration status ⚠️
-- **001–013 are committed/tracked.** **014, 015, 016, 017, 018, 019 are git-untracked (new)**, as
-  are `supabase/functions/`, `seed-foods.sql`, `seed-nutrition.sql`.
-- The remote database (as observed live) is **missing at least migration 019** — the
-  `exercise_library.deprecated` column does not exist remotely. This means the app's own
-  `planGenerator.fetchLibrary` (which selects `deprecated`) would fail with Postgres error `42703`
-  against remote, so the in-app **"Reset & Regenerate Plan" button is currently broken** until
-  014–019 are applied.
-- `full_schema.sql` reflects **only 001–013** — stale, not regenerated after the nutrition/exercise
-  work.
+- The repo now carries **migrations 001–045**. Canonical run order + per-migration descriptions live
+  in `docs/PRE_DEPARTURE.md §1` (kept in sync with this file). Deploy each as a single whole-file
+  paste into the Supabase SQL Editor — several use dollar-quoted blocks that naive `;` splitters break.
+- **Verify what's actually applied to remote before regenerating plans.** `planGenerator.fetchLibrary`
+  selects `deprecated` (migration 019) and other later columns; if remote is behind, those queries
+  fail with `42703`. The canonical exercise library ships in migration **020** (~53 rows) with static
+  demo media under `public/exercise-media/<id>/` (frames `0.jpg`/`1.jpg`).
+- `full_schema.sql` is **stale** (reflects the early schema only) and is not regenerated after each
+  migration — treat the numbered migration files as the source of truth.
 - Migration **016 has a numbering gap** (sections 1,2,3,5,6 — no section 4), suggesting a dropped block.
-- Remote `exercise_library` currently holds only **6 rows**, so generated plans draw from a tiny pool.
 
 ### 4.2 Table reference
 
@@ -155,7 +162,7 @@ ProfileProvider is inside ProtectedRoute so it only mounts once a user exists.
 | **exercise_logs** | 006 (+015) | id, user_id, workout_log_id→workout_logs(cascade), exercise_id→exercise_library(set null), exercise_name, order_index, sets jsonb; **015** library_exercise_id, custom_exercise_id, swapped_from_ref, swap_reason, is_ad_hoc, plan_version_id | own |
 | **food_library** | 007 | id text PK, name, aliases[], category, is_vegetarian, serving_size, serving_grams, calories, protein_g, carbs_g, fat_g, fiber_g, source CHECK(ifct/manual/estimated) | read-only; writes = service role |
 | **meal_logs** | 008 (+015) | id, user_id, log_date, meal_type CHECK(breakfast/lunch/dinner/snack), food_id→food_library(set null), food_name, servings, calories, protein_g, carbs_g, fat_g, notes; **015** custom_food_id→custom_foods, item_label, fiber_g, source CHECK(library/custom/recipe/ai_parsed/quick_add), drops NOT NULL on food_id, adds `meal_log_identity` CHECK | select/insert/update/**delete** own (only table with delete) |
-| **weight_logs** | 009 | id, user_id, log_date, weight_kg, waist_cm, notes, **UNIQUE(user_id, log_date)** | own |
+| **weight_logs** | 009 (+027) | id, user_id, log_date, weight_kg, waist_cm, notes, **UNIQUE(user_id, log_date)**; **027** adds `hip_cm`, `bust_cm` | own |
 | **skin_logs** | 010 | id, user_id, log_date, routine_type CHECK(am/pm), steps_done jsonb, notes | own |
 | **skin_checkins** | 011 | id, user_id, checkin_date, texture_score/evenness_score/hydration_score CHECK(1–5), breakout_level CHECK(none/few/moderate/many), notes | own |
 | **daily_logs** | 012 | id, user_id, log_date, steps, sleep_hours, water_glasses, notes, **UNIQUE(user_id, log_date)** | own |
@@ -168,6 +175,13 @@ ProfileProvider is inside ProtectedRoute so it only mounts once a user exists.
 | **nutrition_targets** | 016 | user_id PK, calories, protein_g, carbs_g, fat_g, fiber_g, updated_at | all own |
 | **nutrition_target_history** | 016 | id, user_id, effective_date, macros, deficit_kcal, goal_mode, reason, source CHECK(engine/manual) | select own; insert own only when source='manual' |
 | **weight_trend** (VIEW) | 016 | `security_invoker=on` view over weight_logs → adds ma_7d, ma_14d, ma_28d (RANGE-based moving averages so skipped weigh-ins don't skew) | inherits weight_logs RLS |
+| **progress_photos** | 028 | id, user_id, photo_date, storage path/url, pose/notes; backed by a **private storage bucket** with RLS | own |
+| **cardio_logs** | 030 (+044) | id, user_id, log_date, type, minutes, intensity CHECK(zone2/low/moderate/high), notes; **044** adds `activity_key`, `distance_km`, `calories`, `calories_source` CHECK(estimated/measured), `rpe` CHECK(1–10) | own |
+| **session_prep_logs** | 045 | id, user_id, log_date, day_label, kind CHECK(warmup/cooldown), completed_keys text[], updated_at, **UNIQUE(user_id, log_date, day_label, kind)** — warm-up/stretch check-off state | own |
+| **rate_limit** | 034 | per-user, per-bucket counter table for Edge Functions (`check_rate_limit_fn` RPC); used by `parse-meal` | own / service role |
+| **portion_conversions** | 041 | food_id→food_library, unit, grams_equivalent — household-unit → grams for meal parsing | read-only |
+| **food_aliases** | 041 | alias → food_id mapping to widen fuzzy matching | read-only |
+| **ai_food_estimates** | 041 | normalized_name (dedup key), name, per-serving macros, source — AI per-100g estimates cached by `parse-meal` so repeat foods resolve from the DB | own / service role |
 
 ### 4.3 Edge Function — `adjust-nutrition-targets`
 - `supabase/functions/adjust-nutrition-targets/index.ts` (Deno). Uses SERVICE_ROLE key (bypasses
@@ -181,6 +195,18 @@ ProfileProvider is inside ProtectedRoute so it only mounts once a user exists.
   protein = max(current, target); **fat held constant; carbs absorb the entire delta** (quirk — can
   drive carbs toward 0). Writes `nutrition_target_history` + updates `nutrition_targets` + stamps
   `last_adjusted_at`.
+
+### 4.4 Edge Function — `parse-meal`
+- `supabase/functions/parse-meal/index.ts` (Deno). Free-text meal → structured items. **Single
+  self-contained file** (JWT auth, CORS, rate limiting inlined — `_shared/` is reference only, copied
+  in manually since there's no CLI deploy). Authenticated (user JWT), rate-limited 30/min via
+  `rate_limit` + `check_rate_limit_fn`.
+- Extraction via **Groq** (`llama-3.3-70b-versatile`, strict json_object) with an optional **Gemini**
+  fallback; if every provider fails it returns a structured manual-entry signal (200, never 500).
+- Resolves each item against `food_library` (exact + trigram `match_food_fuzzy`) + `food_aliases` +
+  `portion_conversions`, computing macros **from the DB**; composite dishes are summed from raw
+  ingredients; unresolved items fall back to the model's own per-100g estimate, cached into
+  `ai_food_estimates`. Consumed by the nutrition natural-entry flow (see §5.3).
 
 ---
 
@@ -205,7 +231,8 @@ ProfileProvider is inside ProtectedRoute so it only mounts once a user exists.
 `exerciseSelector.ts` (`fillSlot` picks from `exercise_library` by target/pattern/equipment/
 injury/preference scoring) → `planGeneratorCore.ts` (`generatePhasePlanData` pure function) →
 `planGenerator.ts` (IO: fetch library/assessment/goal_mode, insert/activate/advance plans) →
-`PlanReview.tsx` (review + activate) and `TodayWorkout.tsx` (read-only session list).
+`PlanReview.tsx` (review + activate) and `TodayWorkout.tsx` (full interactive session: warm-up →
+exercises with per-set logging → cool-down → finish).
 
 - **NEW plan shape** stored in `workout_plans.plan_data`:
   `PlanData = { version, phase, total_phases, days: PlanDay[] }`, where
@@ -226,20 +253,31 @@ injury/preference scoring) → `planGeneratorCore.ts` (`generatePhasePlanData` p
   `activatePlan` (deactivate all, activate one — one-active invariant) → `advanceToNextPhase` (new
   version row, old deactivated but never mutated). `advanceToNextPhase` reads last 20 exercise_logs
   + latest weight_trend but **discards them** (placeholder for future adaptive logic).
-- **"Today" logic** (`useTodayWorkout`): **KNOWN SIMPLIFICATION** — no weekday/calendar mapping.
-  Sessions are a flat cycling list; "today" = `floor(daysSinceStart) % days.length`. `isRestDay` is
-  **always false** when a plan exists. Returns safe empty state for legacy/missing `days`.
+- **"Today" logic** (`useTodayWorkout` + `planProgress.ts`): sessions are **pinned to the user's real
+  training weekdays** (`assessment.availability.preferred_days`) via `planDayIndexForDate`, so rest
+  days are genuine rest days. `TodayWorkout` has a 7-day picker to log a missed/rearranged session
+  against the correct date + plan day, and a "train anyway" option on rest days. When `preferred_days`
+  is empty it falls back to elapsed-day cycling (`daysSinceStart % days.length`).
+- **Session UI** (`SessionExerciseCard.tsx`): expandable card per exercise with an **animated demo**
+  (cross-fades the two free-exercise-db frames `0.jpg`/`1.jpg` via `ExerciseMedia.tsx`), a **"Watch on
+  YouTube"** link (exact video / seeded search / name-based search), coach cues, per-set weight×reps
+  (+ RIR, + ladder assist-kg / surface for B), and **in-session swaps** to an alternative (recorded on
+  the log, never mutating the plan). Ladder/surface metrics persist via migration 025.
+- **Warm-up & cool-down** (`WarmupStretchCard.tsx` + `useSessionPrep.ts` + `warmupStretch.ts`): each
+  day resolves a curated, ordered routine from its label (Push/Pull/Legs/Upper/Lower/…); items are
+  checked off in order and synced to `session_prep_logs`.
+- **Progression** (`ProgressEngine.ts`): `getRecommendation` is called per exercise in
+  `SessionExerciseCard` to suggest the next load/reps (linear/double-progression, deload, failure
+  handling); it canonicalises both coach and legacy progression verbs.
+- **Logging** (`hooks/useWorkoutLogger.ts`, `useExerciseHistory.ts`, `useExerciseDetails.ts`): write
+  `workout_logs`/`exercise_logs`, read prior-session history, and resolve `exercise_library` detail
+  (cues, gif, muscles, youtube). "Finish workout" summarises volume/duration and warns if mandatory
+  prehab (`isPrehabSlot`) was skipped (`prehab_skipped`, migration 029).
 
-**ORPHANED / not wired into live UI (dead or half-built):**
-- `ProgressEngine.ts` — full progression logic (linear/double-progression, deload, failure
-  deloads) but consumes OLD-shape types with **zero producers**; imported nowhere.
-- `ExerciseCard.tsx` — rich card using the OLD static exercise constant + fields not on
-  `LibraryExercise`; imported nowhere.
-- `hooks/useWorkoutLogger.ts` — writes `workout_logs`/`exercise_logs`; **hardcodes `plan_version:1`**
-  (latent bug for versioned history); imported nowhere → **set/RIR logging is not reachable in the
-  live UI. TodayWorkout is read-only.**
-- `hooks/useExerciseHistory.ts` — reads exercise history; imported nowhere.
-- `plan_version_id` exists as a column (015) and in a code comment, but nothing reads/writes it.
+**Legacy / not wired:**
+- `plan_version_id` exists as a column (015) and in comments, but nothing reads/writes it.
+- Legacy `WorkoutPlan`/`Phase`/`DayPlan` types in `lib/types.ts` are superseded by `planTypes.ts`.
+  (`ExerciseCard.tsx`, the old static-constant card, has been **removed**.)
 
 ### 5.3 Nutrition (`src/features/nutrition/`) — smaller than it looks
 - Only **3 files**: `MealLogger.tsx`, `hooks/useDailyNutrition.ts`, `hooks/useNutritionTargets.ts`.
@@ -284,9 +322,19 @@ injury/preference scoring) → `planGeneratorCore.ts` (`generatePhasePlanData` p
   texture/evenness/hydration; **breakout_level captured but never charted**.
 
 ### 5.6 Tracking (`src/features/tracking/`)
-- `TrackPage` stacks `WeightTracker` + `DailyTracker`.
+- `TrackPage` stacks: `RecoveryWatch` → `PhotoReminder` → `WeightTracker` → `LiftProgress` →
+  `PhotoTimeline` → `CardioTracker` → `DailyTracker`.
 - `DailyTracker`: steps (onBlur), sleep hrs (onBlur, 0–24), water (+/- stepper, clamp 0–30, saves
   immediately). Each field is an independent upsert into `daily_logs` (one row per day).
+- `CardioTracker` (`hooks/useCardioLogs.ts`): logs `cardio_logs`. Activity is chosen from a curated
+  **MET library** (`lib/constants/cardioActivities.ts`, ~24 activities across machine/outdoor/sport/
+  studio) or free-text. **Calories auto-estimate** as `MET × bodyweight × time × intensity` (bodyweight
+  = latest `weight_logs` entry, else assessment weight); a device number can override the estimate
+  (`calories_source` = estimated|measured). Walk/run/cycle activities capture distance + show min/km
+  pace; RPE 1–10 (one tap also sets intensity); backdating to any of the last 7 days. Weekly readout:
+  Zone-2 count vs target, calories burned, steps band.
+- `LiftProgress` (est-1RM charts), `PhotoTimeline`/`PhotoReminder` (progress photos, migration 028),
+  `RecoveryWatch` (`hooks/useRecoveryWatch.ts`) round out the page.
 
 ### 5.7 Dashboard (`src/features/dashboard/`)
 - `Dashboard.tsx` aggregates: profile, today's workout, nutrition totals+targets, streaks, and
@@ -320,9 +368,11 @@ injury/preference scoring) → `planGeneratorCore.ts` (`generatePhasePlanData` p
    column missing → in-app plan regeneration fails (`42703`). `full_schema.sql` is stale.
 2. **`useWorkoutLogger` hardcodes `plan_version:1`** → logged history won't track the active plan
    version after `advanceToNextPhase`. (Moot today since logging isn't wired, but a landmine.)
-3. **UTC "today" everywhere:** all hooks use `new Date().toISOString().slice(0,10)`. For IST users
-   the logical day flips at 05:30 local → late-night/early-morning logs land on the wrong `log_date`.
-   Pervasive (dashboard, streaks, skin, weight, daily, nutrition).
+3. **Local vs UTC "today" (partially fixed):** `lib/utils.ts` now provides `localDateISO`/
+   `localTodayISO`, used by newer hooks (e.g. cardio, session-prep), and migration **035** was a
+   one-time repair of rows mis-dated 00:00–05:30 IST. But older hooks may still use
+   `new Date().toISOString().slice(0,10)` — audit dashboard/streaks/skin/weight/daily/nutrition and
+   migrate any stragglers to the local-date helpers.
 4. **`useDailyNutrition` date frozen at mount** (no midnight rollover) and `reload` is a no-op stub.
 5. **`meal_logs.food_id` always null** — food identity is never persisted; breaks any future
    per-food analytics and the FK's purpose.
@@ -334,9 +384,10 @@ injury/preference scoring) → `planGeneratorCore.ts` (`generatePhasePlanData` p
 ### 6.2 Half-migrated / dead code
 9. **Old-vs-new plan type triplication:** `lib/types.ts` legacy `WorkoutPlan`/`Phase`/`DayPlan` +
    `GeneratedWorkoutPlan` (both dead) vs the live `planTypes.ts` `PlanData`. Consolidate/delete.
-10. **Orphaned workout modules:** `ProgressEngine.ts`, `ExerciseCard.tsx`, `useWorkoutLogger.ts`,
-    `useExerciseHistory.ts` — the **entire set-logging + progression flow is not reachable**;
-    `TodayWorkout` is read-only.
+10. **(RESOLVED)** The set-logging + progression flow is now live: `useWorkoutLogger`,
+    `useExerciseHistory`, and `ProgressEngine` are all wired through `SessionExerciseCard`;
+    `ExerciseCard.tsx` (the old orphan) was removed. Remaining latent bug: `useWorkoutLogger` still
+    **hardcodes `plan_version:1`** (see 6.1 #2).
 11. **Orphaned 014 `profiles` target columns** (superseded by `nutrition_targets`); 3 TODOs to drop.
 12. **015 custom foods/recipes/exercises have no frontend.** Adaptive TDEE engine has no UI.
 13. **Empty scaffolding:** `src/components/ui/`, `src/hooks/` unused. `react-router-dom` unused.
@@ -346,8 +397,8 @@ injury/preference scoring) → `planGeneratorCore.ts` (`generatePhasePlanData` p
 ### 6.3 Product / UX gaps
 15. **Only two personas** (keyed by `sex`) despite "N-user" claims — skincare + some dashboard logic
     won't generalize.
-16. **No workout logging UI** — you can view "today" but not record sets/reps/weights; ProgressEngine
-    can't run without logged data.
+16. **(RESOLVED)** Workout logging UI now exists (sets/reps/weights/RIR, swaps, warm-up/stretch
+    check-off, finish summary) — see §5.2.
 17. **No photo capture** for skin (text reminder only); breakout level never visualized.
 18. **`lean_bulk`/`maintain` goals unmodeled** in workout templates (silently → recomp).
 19. **Label/logic mismatches:** WeightTracker "4-Week Trend" windows; StepGoals "drag to reorder"
@@ -370,8 +421,9 @@ injury/preference scoring) → `planGeneratorCore.ts` (`generatePhasePlanData` p
 1. `src/App.tsx` + `src/components/layout/AppShell.tsx` (shell & gating)
 2. `src/features/profile/ProfileContext.tsx` + `types.ts` (state + assessment model)
 3. `src/features/workout/` in pipeline order: `planTypes → planTemplates → exerciseSelector →
-   planGeneratorCore → planGenerator → useTodayWorkout → TodayWorkout/PlanReview`
+   planGeneratorCore → planGenerator → useTodayWorkout/planProgress → TodayWorkout →
+   SessionExerciseCard (+ ExerciseMedia, WarmupStretchCard, ProgressEngine, useWorkoutLogger)`
 4. `src/features/nutrition/` (3 files) + `supabase/functions/adjust-nutrition-targets/index.ts` +
    `supabase/migrations/016_tdee_nutrition_engine.sql`
 5. `src/features/dashboard/Dashboard.tsx` (aggregation + streaks)
-6. `supabase/migrations/` 001→019 for the full schema
+6. `supabase/migrations/` 001→045 for the full schema (run order in `docs/PRE_DEPARTURE.md §1`)
