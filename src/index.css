@@ -39,7 +39,7 @@ input, textarea, select {
   }
 }
 
-* {
+button, a, [role="button"], nav {
   -webkit-user-select: none;
   user-select: none;
 }

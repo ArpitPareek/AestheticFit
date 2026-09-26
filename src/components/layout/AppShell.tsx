@@ -51,7 +51,7 @@ export function AppShell({ activeTab, onTabChange, children }: AppShellProps) {
   }
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="flex h-svh flex-col bg-background">
       {/* A2HS Banner */}
       {showA2hs && (
         <div className="flex items-center justify-between gap-3 bg-emerald-600/15 px-4 py-2.5">
@@ -74,7 +74,7 @@ export function AppShell({ activeTab, onTabChange, children }: AppShellProps) {
       )}
 
       {/* Content */}
-      <main ref={mainRef} className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+      <main ref={mainRef} className="flex-1 overflow-y-auto overscroll-contain touch-pan-y px-4 py-4">
         {children}
       </main>
 
