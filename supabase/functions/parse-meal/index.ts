@@ -106,13 +106,23 @@ type ResolvedItem = {
 // -- inlined auth (mirrors _shared/auth.ts) -----------------------------------
 async function authenticate(req: Request): Promise<{ id: string } | null> {
   const authHeader = req.headers.get('Authorization') ?? ''
-  if (!authHeader.startsWith('Bearer ')) return null
-  const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
+  if (!authHeader.startsWith('Bearer ')) {
+    console.error('auth_fail_no_bearer_header', { hasHeader: !!req.headers.get('Authorization') })
+    return null
+  }
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { Authorization: authHeader, apikey: SUPABASE_ANON_KEY },
   })
-  const { data, error } = await client.auth.getUser()
-  if (error || !data.user) return null
-  return { id: data.user.id }
+  if (!res.ok) {
+    console.error('auth_fail_get_user', { status: res.status, body: await res.text() })
+    return null
+  }
+  const user = await res.json()
+  if (!user?.id) {
+    console.error('auth_fail_get_user', { message: 'response missing id', user })
+    return null
+  }
+  return { id: user.id }
 }
 
 // -- inlined rate limit (mirrors _shared/rateLimit.ts) ------------------------
@@ -167,21 +177,88 @@ function withTimeout(ms: number): { signal: AbortSignal; cancel: () => void } {
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
 
+// -- unit vocabulary (hoisted so parseAiItems can use it) ---------------------
+const UNIT_ALIASES: Record<string, string> = {
+  pieces: 'piece', pcs: 'piece', pc: 'piece', slices: 'slice',
+  bowl: 'katori', bowls: 'katori', katoris: 'katori',
+  'small bowl': 'small_katori', 'small_katoris': 'small_katori',
+  plates: 'plate', glasses: 'glass', cups: 'cup',
+  gram: 'g', grams: 'g', gm: 'g', gms: 'g',
+  kilogram: 'kg', kilograms: 'kg',
+  milliliter: 'ml', millilitre: 'ml', milliliters: 'ml', millilitres: 'ml',
+  tablespoon: 'tbsp', tablespoons: 'tbsp', tbsps: 'tbsp',
+  teaspoon: 'tsp', teaspoons: 'tsp', tsps: 'tsp',
+  handfuls: 'handful', scoops: 'scoop', servings: 'serving',
+  mediums: 'medium', larges: 'large', smalls: 'small',
+}
+const normalizeUnit = (u: string): string => UNIT_ALIASES[u.toLowerCase().trim()] ?? u.toLowerCase().trim()
+const normalizeName = (s: string): string => s.trim().toLowerCase().replace(/\s+/g, ' ')
+
+// Household units where the food's default serving_grams (often 100 for IFCT
+// rows) is meaningless — we need a portion_conversions row or the AI grams.
+const HOUSEHOLD_UNITS = new Set([
+  'piece', 'tsp', 'tbsp', 'handful', 'scoop', 'serving',
+  'slice', 'medium', 'large', 'small',
+  'katori', 'small_katori', 'plate', 'glass', 'cup',
+])
+
+// Density (g/ml) for liquids — keyed by keywords in the resolved food's name.
+// Prevents "1 tbsp oil" from being logged as 15 g when it should be ~14 g and,
+// more importantly, "100 ml honey" as 100 g when it should be ~142 g.
+const DENSITY_KEYWORDS: Array<[RegExp, number]> = [
+  [/\b(oil|ghee|butter)\b/i, 0.92],
+  [/\bhoney\b/i, 1.42],
+  [/\b(syrup|maple|jaggery syrup|corn syrup)\b/i, 1.3],
+  [/\bcondensed milk\b/i, 1.3],
+]
+function densityFor(foodName: string): number {
+  for (const [re, d] of DENSITY_KEYWORDS) if (re.test(foodName)) return d
+  return 1.0
+}
+
+// Per-unit ceilings on AI's estimated_grams so a "1 slice pizza" cannot log as
+// 2 kg. Applied per unit, then multiplied by quantity.
+const UNIT_MAX_GRAMS: Record<string, number> = {
+  piece: 300, tsp: 15, tbsp: 30, glass: 500, cup: 400,
+  katori: 250, small_katori: 150, plate: 600, slice: 120,
+  handful: 60, scoop: 60, serving: 400,
+}
+function clampEstimatedGrams(raw: number, unit: string, quantity: number): number {
+  const n = clamp(raw, 1, 2000)
+  const perUnit = UNIT_MAX_GRAMS[normalizeUnit(unit)]
+  if (!perUnit) return n
+  const q = Number.isFinite(quantity) && quantity > 0 ? quantity : 1
+  return Math.min(n, perUnit * q)
+}
+
 // Reject physically-impossible per-100g macros and reconcile calories with the
 // Atwater sum (4/4/9). Prevents a hallucinated "900 cal, 80 g protein" from
 // being logged or cached.
 function sanitizePer100g(m: Macros): { macros: Macros; adjusted: boolean } {
-  const protein_g = clamp(Number(m.protein_g) || 0, 0, 100)
-  const carbs_g = clamp(Number(m.carbs_g) || 0, 0, 100)
-  const fat_g = clamp(Number(m.fat_g) || 0, 0, 100)
+  let protein_g = clamp(Number(m.protein_g) || 0, 0, 100)
+  let carbs_g = clamp(Number(m.carbs_g) || 0, 0, 100)
+  let fat_g = clamp(Number(m.fat_g) || 0, 0, 100)
   const fiber_g = clamp(Number(m.fiber_g) || 0, 0, 100)
+  let adjusted = false
+  // P+C+F per 100 g of food cannot exceed 100 g; scale down proportionally.
+  const macroSum = protein_g + carbs_g + fat_g
+  if (macroSum > 100) {
+    const scale = 100 / macroSum
+    protein_g = Math.round(protein_g * scale * 10) / 10
+    carbs_g = Math.round(carbs_g * scale * 10) / 10
+    fat_g = Math.round(fat_g * scale * 10) / 10
+    adjusted = true
+  }
   const atwater = 4 * protein_g + 4 * carbs_g + 9 * fat_g
   let calories = clamp(Number(m.calories) || 0, 0, 900)
-  // If the model's calories disagree with the macro sum by >25% (and the sum is
-  // meaningful), trust the Atwater calculation — it's internally consistent.
-  const adjusted =
-    atwater > 20 && Math.abs(calories - atwater) / atwater > 0.25
-  if (adjusted) calories = Math.round(atwater)
+  if (atwater < 10 && calories > 20) {
+    // Macros are ~zero but calories aren't — trust the (near-zero) Atwater sum.
+    calories = Math.round(atwater)
+    adjusted = true
+  } else if (atwater > 20 && Math.abs(calories - atwater) / atwater > 0.25) {
+    calories = Math.round(atwater)
+    adjusted = true
+  }
   return { macros: { calories, protein_g, carbs_g, fat_g, fiber_g }, adjusted }
 }
 
@@ -218,7 +295,9 @@ function parseAiItems(raw: string | undefined | null): AiItem[] | null {
         name: it.name.trim(),
         quantity: Number.isFinite(it.quantity) ? Number(it.quantity) : 1,
         unit: typeof it.unit === 'string' && it.unit.trim() ? it.unit.trim().toLowerCase() : 'piece',
-        estimated_grams: Number.isFinite(it.estimated_grams) ? clamp(Number(it.estimated_grams), 1, 2000) : 100,
+        estimated_grams: Number.isFinite(it.estimated_grams)
+          ? clampEstimatedGrams(Number(it.estimated_grams), typeof it.unit === 'string' ? it.unit : 'piece', Number(it.quantity) || 1)
+          : 100,
         estimate_per_100g: macros,
         ingredients: parseIngredients(it.ingredients),
       })
@@ -245,8 +324,12 @@ async function callGroq(text: string): Promise<AiItem[] | null> {
         model: GROQ_MODEL,
         temperature: 0,
         // Nested ingredient output for a multi-item meal can be long; give it
-        // headroom so the JSON is never cut off mid-structure.
-        max_tokens: 2048,
+        // headroom so the JSON is never cut off mid-structure. gpt-oss-20b is
+        // verbose on composed dishes (paneer sabzi + ingredient breakdown) and
+        // truncation at 2048 caused Groq's json_object validator to 400 with
+        // an empty failed_generation. 4096 covers observed successful runs (max
+        // ~1800 tokens) with a safety margin.
+        max_tokens: 4096,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
@@ -313,30 +396,22 @@ async function extractItems(text: string): Promise<{ items: AiItem[] | null; pro
   return { items: null, providerFailed }
 }
 
-// -- unit normalization / grams resolution ------------------------------------
-const UNIT_ALIASES: Record<string, string> = {
-  pieces: 'piece', pcs: 'piece', pc: 'piece',
-  bowl: 'katori', bowls: 'katori', katoris: 'katori',
-  'small bowl': 'small_katori', 'small_katoris': 'small_katori',
-  plates: 'plate', glasses: 'glass', cups: 'cup',
-  gram: 'g', grams: 'g', gm: 'g', gms: 'g',
-  kilogram: 'kg', kilograms: 'kg',
-  milliliter: 'ml', millilitre: 'ml', milliliters: 'ml',
-}
-const normalizeUnit = (u: string): string => UNIT_ALIASES[u.toLowerCase().trim()] ?? u.toLowerCase().trim()
-const normalizeName = (s: string): string => s.trim().toLowerCase().replace(/\s+/g, ' ')
+// -- grams resolution (unit vocabulary hoisted above sanitizePer100g) ---------
 
 async function gramsForMatchedFood(
   foodId: string,
+  foodName: string,
   servingGrams: number,
   unit: string,
   quantity: number,
   fallbackGrams: number,
-): Promise<{ grams: number; usedDefaultServing: boolean }> {
+): Promise<{ grams: number; usedDefaultServing: boolean; uncalibrated: boolean }> {
   const u = normalizeUnit(unit)
-  if (u === 'g') return { grams: quantity, usedDefaultServing: false }
-  if (u === 'kg') return { grams: quantity * 1000, usedDefaultServing: false }
-  if (u === 'ml') return { grams: quantity, usedDefaultServing: false } // approximation for liquids
+  if (u === 'g') return { grams: quantity, usedDefaultServing: false, uncalibrated: false }
+  if (u === 'kg') return { grams: quantity * 1000, usedDefaultServing: false, uncalibrated: false }
+  if (u === 'ml') {
+    return { grams: quantity * densityFor(foodName), usedDefaultServing: false, uncalibrated: false }
+  }
 
   const { data } = await serviceClient
     .from('portion_conversions')
@@ -344,14 +419,21 @@ async function gramsForMatchedFood(
     .eq('food_id', foodId)
     .eq('unit', u)
     .maybeSingle()
-  if (data) return { grams: quantity * Number(data.grams_equivalent), usedDefaultServing: false }
+  if (data) return { grams: quantity * Number(data.grams_equivalent), usedDefaultServing: false, uncalibrated: false }
 
-  // No calibrated portion for this unit -- fall back to the food's own default
-  // serving size scaled by quantity, or the AI's grams estimate if that's more
-  // plausible (guards against e.g. quantity=1 unit="plate" on a 35g roti food).
+  // No calibrated portion for this unit. For household units (piece/tsp/tbsp/
+  // handful/glass/…) the food's serving_grams — often 100 for IFCT rows — is
+  // meaningless (this is the "5 almonds = 500 g" family). Prefer the AI's
+  // grams estimate, which is already unit-capped in parseAiItems.
+  if (HOUSEHOLD_UNITS.has(u)) {
+    const grams = fallbackGrams > 0 ? fallbackGrams : quantity * servingGrams
+    return { grams, usedDefaultServing: true, uncalibrated: true }
+  }
+
+  // Unknown non-household unit — scale the default serving.
   const viaDefaultServing = quantity * servingGrams
   const grams = viaDefaultServing > 0 ? viaDefaultServing : fallbackGrams
-  return { grams, usedDefaultServing: true }
+  return { grams, usedDefaultServing: true, uncalibrated: false }
 }
 
 function scaleMacros(per: Macros, perGrams: number, grams: number): Macros {
@@ -367,7 +449,7 @@ function scaleMacros(per: Macros, perGrams: number, grams: number): Macros {
 }
 
 // -- DB resolution -------------------------------------------------------------
-const FUZZY_MIN_SIMILARITY = 0.3 // matches the `%` operator's own threshold; anything returned already clears this
+const FUZZY_MIN_SIMILARITY = 0.55 // bumped from 0.3 — chai↔chia, almond↔almonds were leaking through
 
 type FoodRow = {
   id: string; name: string; serving_grams: number
@@ -401,14 +483,26 @@ async function findLibraryFood(query: string): Promise<FoodRow | null> {
   return (await findExactFood(query)) ?? (await findFuzzyFood(query))?.food ?? null
 }
 
+// Stricter variant for composed-dish ingredients — a 0.3-similarity match on
+// a raw component would silently mis-macro the whole dish.
+const INGREDIENT_MIN_SIMILARITY = 0.6
+async function findIngredientFood(query: string): Promise<FoodRow | null> {
+  const exact = await findExactFood(query)
+  if (exact) return exact
+  const fuzzy = await findFuzzyFood(query)
+  if (fuzzy && fuzzy.similarity >= INGREDIENT_MIN_SIMILARITY) return fuzzy.food
+  return null
+}
+
 // Build a resolved item from a matched library food (shared by exact + fuzzy).
 async function buildMatched(
   item: AiItem, food: FoodRow, source: 'library' | 'fuzzy', warnings: string[],
 ): Promise<ResolvedItem> {
-  const { grams, usedDefaultServing } = await gramsForMatchedFood(
-    food.id, Number(food.serving_grams), item.unit, item.quantity, item.estimated_grams,
+  const { grams, usedDefaultServing, uncalibrated } = await gramsForMatchedFood(
+    food.id, food.name, Number(food.serving_grams), item.unit, item.quantity, item.estimated_grams,
   )
-  if (usedDefaultServing) warnings.push(`no_portion_data:${item.name}:${item.unit}`)
+  if (uncalibrated) warnings.push(`portion_uncalibrated:${item.name}:${item.unit}`)
+  else if (usedDefaultServing) warnings.push(`no_portion_data:${item.name}:${item.unit}`)
   const macros = scaleMacros(
     { calories: Number(food.calories), protein_g: Number(food.protein_g), carbs_g: Number(food.carbs_g), fat_g: Number(food.fat_g), fiber_g: Number(food.fiber_g) },
     Number(food.serving_grams), grams,
@@ -447,7 +541,7 @@ async function decompose(item: AiItem, warnings: string[]): Promise<ResolvedItem
   const parts: ResolvedIngredient[] = []
   for (const ing of ings) {
     totalGrams += ing.grams
-    const found = await findLibraryFood(ing.name)
+    const found = await findIngredientFood(ing.name)
     if (!found) continue
     const pg = perGram(found)
     const m = {
@@ -464,6 +558,18 @@ async function decompose(item: AiItem, warnings: string[]): Promise<ResolvedItem
     })
   }
   if (totalGrams <= 0 || matchedGrams / totalGrams < DECOMP_MIN_MATCH_RATIO) return null
+
+  // Blend AI per-100g macros over the unmatched mass fraction so we don't
+  // silently drop 20% of a composite dish's calories.
+  const unmatched = totalGrams - matchedGrams
+  if (unmatched > 0) {
+    const pg = item.estimate_per_100g
+    sum.calories += (pg.calories * unmatched) / 100
+    sum.protein_g += (pg.protein_g * unmatched) / 100
+    sum.carbs_g += (pg.carbs_g * unmatched) / 100
+    sum.fat_g += (pg.fat_g * unmatched) / 100
+    sum.fiber_g += (pg.fiber_g * unmatched) / 100
+  }
 
   // Display grams = the eaten/cooked weight the model estimated, NOT the sum of
   // dry ingredient weights (staples are counted dry, so that sum understates the

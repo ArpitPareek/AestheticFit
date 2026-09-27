@@ -96,18 +96,29 @@ export function useWorkoutLogger(planId: string | null, dayLabel: string, workou
       return existing.id
     }
 
+    // Snapshot the plan version that was active when this session ran, so
+    // historical logs stay tied to the plan they were performed under even
+    // after advanceToNextPhase writes a new workout_plans row (B11).
+    // plan_version_id (uuid) resolves to the active plan row; plan_version
+    // (integer) mirrors plan_version on that row so old joins keep working.
+    const { data: planRow } = await supabase
+      .from('workout_plans')
+      .select('id, plan_version')
+      .eq('id', planId)
+      .maybeSingle()
+    const planVersion = planRow?.plan_version ?? 1
+
     const { data, error } = await supabase
       .from('workout_logs')
       .insert({
         user_id: user.id,
         plan_id: planId,
-        // TODO: type adoption pass — plan_version is hardcoded to 1 here, not
-        // read from the active plan. Not fixed as part of this types-only change.
-        plan_version: 1,
+        plan_version: planVersion,
+        plan_version_id: planId,
         workout_date: workoutDate,
         day_label: dayLabel,
         started_at: new Date().toISOString(),
-      })
+      } satisfies InsertTables<'workout_logs'>)
       .select('id')
       .single()
 
@@ -243,6 +254,15 @@ export function useWorkoutLogger(planId: string | null, dayLabel: string, workou
   } | null> => {
     const logId = workoutLogIdRef.current
     if (!logId) return null
+
+    // B10: never stamp completed_at on a session with zero exercise_logs — that
+    // silently ticked the streak and painted a ✓ on the dashboard for a
+    // "Finish anyway" tap on an empty card. A finished workout requires at
+    // least one exercise with at least one set.
+    const loggedCount = Object.values(state.loggedExercises).filter((sets) => sets.length > 0).length
+    if (loggedCount === 0) {
+      return null
+    }
 
     setState((s) => ({ ...s, saving: true }))
 

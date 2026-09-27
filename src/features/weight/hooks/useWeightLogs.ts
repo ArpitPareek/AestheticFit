@@ -38,27 +38,21 @@ export function useWeightLogs() {
     if (!user) return { error: 'Not signed in' }
     setSaving(true)
 
-    const existing = logs.find(l => l.log_date === logDate)
     const tape = { waist_cm: measures.waist_cm, hip_cm: measures.hip_cm, bust_cm: measures.bust_cm }
 
     let error: string | null = null
-    if (existing) {
-      const { error: e } = await supabase
-        .from('weight_logs')
-        .update({ weight_kg: weightKg, ...tape })
-        .eq('id', existing.id)
-      if (e) error = e.message
-    } else {
-      const { error: e } = await supabase
-        .from('weight_logs')
-        .insert({ user_id: user.id, log_date: logDate, weight_kg: weightKg, ...tape })
-      if (e) error = e.message
-    }
+    const { error: e } = await supabase
+      .from('weight_logs')
+      .upsert(
+        { user_id: user.id, log_date: logDate, weight_kg: weightKg, ...tape },
+        { onConflict: 'user_id,log_date' },
+      )
+    if (e) error = e.message
 
     setSaving(false)
     if (!error) await load()
     return { error }
-  }, [user, logs, load])
+  }, [user, load])
 
   return { logs, loading, saving, upsert, reload: load }
 }

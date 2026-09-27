@@ -18,6 +18,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useProfile } from './ProfileContext'
 import { useNutritionTargets, type NutritionTargets } from '../nutrition/hooks/useNutritionTargets'
+import { localTodayISO } from '../../lib/utils'
 import { AssessmentForm } from './AssessmentForm'
 import type { AssessmentResponses } from './types'
 import type { Database, InsertTables } from '../../types/supabase'
@@ -57,10 +58,13 @@ export function ProfilePage() {
   const [editingWedding, setEditingWedding] = useState(false)
   const [weddingDraft, setWeddingDraft] = useState(weddingDate)
 
+  const responses = assessment?.responses as AssessmentResponses | undefined
+
   if (retaking) {
     return (
       <AssessmentForm
         version={(assessment?.version ?? 0) + 1}
+        existingData={responses}
         onComplete={() => {
           setRetaking(false)
           reload()
@@ -69,7 +73,6 @@ export function ProfilePage() {
     )
   }
 
-  const responses = assessment?.responses as AssessmentResponses | undefined
   const plan = activePlan?.plan_data
 
   const handleResetPlan = async () => {
@@ -122,7 +125,7 @@ export function ProfilePage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `aestheticfit-export-${new Date().toISOString().slice(0, 10)}.json`
+      a.download = `aestheticfit-export-${localTodayISO()}.json`
       a.click()
       URL.revokeObjectURL(url)
     } finally {
@@ -146,17 +149,37 @@ export function ProfilePage() {
         const data = json.data as Record<string, unknown[]> | undefined
         if (!data) throw new Error('Invalid export file')
 
-        let count = 0
+        let imported = 0
+        let rejected = 0
+        const failures: string[] = []
         for (const table of IMPORT_ORDER) {
           const rows = data[table]
           if (!rows?.length) continue
-          // Restoring a previously-exported blob: rows are untyped JSON by
-          // nature (they round-tripped through a file), not a value we can
-          // validate per-table at the type level.
-          const { error } = await supabase.from(table).upsert(rows as unknown as InsertTables<typeof table>[])
-          if (!error) count += rows.length
+          const ownerCol = table === 'profiles' ? 'id' : 'user_id'
+          // Force ownership on every row so a tampered / cross-account file can't
+          // insert rows attributed to another user (RLS would reject anyway, but
+          // this makes the intent explicit and keeps the row count honest).
+          const scoped = (rows as Record<string, unknown>[]).map((r) => ({
+            ...r,
+            [ownerCol]: user.id,
+          }))
+          const { error } = await supabase
+            .from(table)
+            .upsert(scoped as unknown as InsertTables<typeof table>[])
+          if (error) {
+            rejected += rows.length
+            failures.push(`${table}: ${error.message}`)
+          } else {
+            imported += rows.length
+          }
         }
-        setImportMsg(`Imported ${count} records successfully`)
+        if (rejected > 0) {
+          setImportMsg(
+            `Import failed: ${imported} imported, ${rejected} rejected — ${failures[0]}`,
+          )
+        } else {
+          setImportMsg(`Imported ${imported} records successfully`)
+        }
         await reload()
       } catch (e) {
         setImportMsg(`Import failed: ${e instanceof Error ? e.message : 'Unknown error'}`)
@@ -174,7 +197,7 @@ export function ProfilePage() {
   }
 
   const weddingDaysLeft = weddingDate
-    ? Math.max(0, Math.ceil((new Date(weddingDate).getTime() - Date.now()) / 86400000))
+    ? Math.max(0, Math.round((new Date(weddingDate + 'T00:00:00').getTime() - new Date(localTodayISO() + 'T00:00:00').getTime()) / 86400000))
     : null
 
   return (

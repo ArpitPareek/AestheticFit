@@ -5,13 +5,14 @@ import { useProfile } from '../../profile/ProfileContext'
 import { detectRecovery, type RecoveryExerciseSession, type RecoveryResult } from '../recoveryDetection'
 import type { ExerciseSet } from '../../../lib/types'
 import type { GoalMode } from '../../workout/planTypes'
+import { localDateISO } from '../../../lib/utils'
 
 const DAY_MS = 86_400_000
 const WINDOW_DAYS = 21
 const PRIOR_TARGET_DAYS = 14 // "~2 weeks ago" comparison point for body signals
 
 function isoDaysAgo(days: number): string {
-  return new Date(Date.now() - days * DAY_MS).toISOString().slice(0, 10)
+  return localDateISO(new Date(Date.now() - days * DAY_MS))
 }
 
 /**

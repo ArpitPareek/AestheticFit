@@ -11,6 +11,7 @@ import { PhaseAdvanceBanner } from './PhaseAdvanceBanner'
 import { WarmupStretchCard } from './WarmupStretchCard'
 import { useSessionPrep } from './hooks/useSessionPrep'
 import { routineForDay } from '../../lib/constants/warmupStretch'
+import { injuryTextToTags } from './injuryTags'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 // Local-timezone calendar date — matches useWorkoutLogger (never UTC toISOString).
@@ -104,11 +105,20 @@ export function TodayWorkout() {
   }
 
   const prehabSlots = dayPlan?.exercises.filter(isPrehabSlot) ?? []
+  // B16 — after a swap the log lives under the swapped exercise_id, not the
+  // plan's ref.id. Reading by ref.id made the prehab-not-logged modal fire
+  // forever after any swap; the user's only escape was "Finish anyway".
   const skippedPrehab = prehabSlots.filter((s) => {
-    const logged = logger.loggedExercises[s.ref.id]
+    const effectiveId = logger.swapMap[s.ref.id] ?? s.ref.id
+    const logged = logger.loggedExercises[effectiveId]
     return !logged || logged.length === 0
   })
-  const skippedPrehabNames = skippedPrehab.map((s) => details[s.ref.id]?.name ?? s.ref.id)
+  const skippedPrehabNames = skippedPrehab.map((s) => {
+    const effectiveId = logger.swapMap[s.ref.id] ?? s.ref.id
+    return details[effectiveId]?.name ?? details[s.ref.id]?.name ?? s.ref.id
+  })
+
+  const injuryTags = injuryTextToTags(assessment?.responses.preferences.injuries ?? '')
 
   const handleFinish = async (forceSkip?: boolean) => {
     if (!forceSkip && skippedPrehab.length > 0) {
@@ -227,6 +237,7 @@ export function TodayWorkout() {
                 isDeloadDay={isDeloadDay}
                 loggedByExercise={logger.loggedExercises}
                 swapMap={logger.swapMap}
+                injuryTags={injuryTags}
                 onSave={logger.saveExerciseSets}
               />
             ))}

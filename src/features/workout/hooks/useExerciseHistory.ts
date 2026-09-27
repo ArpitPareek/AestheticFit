@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
+import { localTodayISO } from '../../../lib/utils'
 import type { ExerciseSet } from '../../../lib/types'
 
 export interface ExerciseHistory {
@@ -20,12 +21,18 @@ export function useExerciseHistory(exerciseIds: string[]) {
     if (!user || exerciseIds.length === 0) return
     setLoading(true)
 
-    // Get the most recent log for each exercise
+    // Get the most recent log for each exercise. Exclude today's sets — the
+    // in-session recommendation must be based on the LAST session, not the one
+    // being logged right now. Otherwise saving a top-of-range set and re-opening
+    // the card would say "add load" against a set that just happened (B15).
+    const today = localTodayISO()
     const { data } = await supabase
       .from('exercise_logs')
       .select('exercise_id, sets, workout_logs!inner(workout_date)')
       .eq('user_id', user.id)
       .in('exercise_id', exerciseIds)
+      .lt('workout_logs.workout_date', today)
+      .order('workout_logs(workout_date)', { ascending: false })
       .order('created_at', { ascending: false })
 
     if (data) {

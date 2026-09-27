@@ -18,6 +18,7 @@ import { PhaseAdvanceBanner } from '../workout/PhaseAdvanceBanner'
 import { useDailyNutrition } from '../nutrition/hooks/useDailyNutrition'
 import { useNutritionTargets } from '../nutrition/hooks/useNutritionTargets'
 import { useStreaks, checkTodayActivity } from './useStreaks'
+import { localTodayISO } from '../../lib/utils'
 import { useDashboardData } from './useDashboardData'
 import { RecoveryWatch } from '../tracking/RecoveryWatch'
 import { useAuth } from '../auth/AuthContext'
@@ -153,7 +154,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   useEffect(() => {
     if (!user || dashLoading || streakLoading) return
-    const today = new Date().toISOString().slice(0, 10)
+    const today = localTodayISO()
     checkTodayActivity(user.id, today, isRestDay).then(active => {
       if (active) recordActivity()
     })

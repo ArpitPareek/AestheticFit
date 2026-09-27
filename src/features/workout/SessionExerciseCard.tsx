@@ -5,7 +5,10 @@ import type { PlanSlotExercise } from './planTypes'
 import { getRecommendation, setComparison } from './ProgressEngine'
 import type { ExerciseCues, ExerciseDetail } from './hooks/useExerciseDetails'
 import type { ExerciseHistory } from './hooks/useExerciseHistory'
+import type { ContraindicationTag } from './injuryTags'
 import { ExerciseMedia } from './ExerciseMedia'
+
+const MAX_RIR = 5
 
 /** Best available YouTube link: the exact video, the seeded search, else a name-based search. */
 function youtubeUrl(name: string, detail?: ExerciseDetail): string {
@@ -74,6 +77,8 @@ interface Props {
   loggedByExercise: Record<string, ExerciseSet[]>
   /** Maps original plan ref.id → swapped-to exercise_id from today's DB log. */
   swapMap: Record<string, string>
+  /** User's structured injury tags — used to warn on contraindicated slots. */
+  injuryTags: ContraindicationTag[]
   onSave: (
     exerciseId: string,
     exerciseName: string,
@@ -85,7 +90,7 @@ interface Props {
 
 type Row = { weight: string; reps: string; rir: string; assist: string; surface: string }
 
-export function SessionExerciseCard({ slot, orderIndex, details, history, isDeloadDay, loggedByExercise, swapMap, onSave }: Props) {
+export function SessionExerciseCard({ slot, orderIndex, details, history, isDeloadDay, loggedByExercise, swapMap, injuryTags, onSave }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [activeId, setActiveId] = useState(() => swapMap[slot.ref.id] ?? slot.ref.id)
   const [showSwap, setShowSwap] = useState(false)
@@ -103,6 +108,22 @@ export function SessionExerciseCard({ slot, orderIndex, details, history, isDelo
   const name = detail?.name ?? activeId
   const lastSession = history[activeId]
   const alreadyLogged = loggedByExercise[activeId]
+  const [saveWarning, setSaveWarning] = useState<string | null>(null)
+
+  // Exercises that legitimately log weight_kg = 0 — bodyweight / no-equipment
+  // moves. The ladder path (assist_reduction) already stores 0 in weight_kg
+  // and tracks progress via assist_kg / surface_level, so it's implicitly OK.
+  const isBodyweight =
+    detail?.equipment?.some((e) => e === 'bodyweight' || e === 'none') ?? false
+
+  // B39 — coach plans don't run through the assessment's contraindication
+  // filter, so surface a red warning if the active exercise's contraindication
+  // tags intersect the user's injury tags. Also flag any alternative that
+  // would still violate — so the swap picker doesn't quietly hand them the
+  // same trap.
+  const contraViolations = (detail?.contraindications ?? []).filter((t) =>
+    injuryTags.includes(t as ContraindicationTag),
+  )
 
   const repRange = slot.rep_low === slot.rep_high ? `${slot.rep_low}` : `${slot.rep_low}–${slot.rep_high}`
 
@@ -180,19 +201,42 @@ export function SessionExerciseCard({ slot, orderIndex, details, history, isDelo
     )
 
   const save = () => {
+    // B13 — a set with a blank weight box on a loaded exercise reads as 0kg
+    // downstream, so the progress engine "recommends +2.5kg" over a fake set.
+    // Block save and force an explicit entry (bodyweight users type "0").
+    const requiresWeight = !isLadder && !isBodyweight
+    if (requiresWeight) {
+      const hasBlankWeight = rows.some((r) => Number(r.reps) > 0 && r.weight.trim() === '')
+      if (hasBlankWeight) {
+        setSaveWarning('Enter a weight for every set (type 0 for bodyweight).')
+        return
+      }
+    }
+
+    // B14 — clamp RIR into 0-5. Values outside are almost always a typo
+    // (RIR "20" instead of "2") — leaving them raw poisons the recovery
+    // detector. Warn once, save with the clamped value.
+    let clampedAny = false
     const parsed: ExerciseSet[] = rows
       .map((r, i) => {
+        const rawRir = r.rir !== '' && !Number.isNaN(Number(r.rir)) ? Number(r.rir) : slot.rir
+        const rir = Math.max(0, Math.min(MAX_RIR, rawRir))
+        if (rir !== rawRir) clampedAny = true
         const base = {
           set_number: i + 1,
           reps: Number(r.reps) || 0,
-          rir: r.rir !== '' && !Number.isNaN(Number(r.rir)) ? Number(r.rir) : slot.rir,
+          rir,
         }
         if (isLadder && ladderMode === 'assist') return { ...base, weight_kg: 0, assist_kg: Number(r.assist) || 0 }
         if (isLadder && ladderMode === 'surface') return { ...base, weight_kg: 0, surface_level: r.surface ? Number(r.surface) : undefined }
         return { ...base, weight_kg: Number(r.weight) || 0 }
       })
       .filter((s) => s.reps > 0)
-    if (parsed.length === 0) return
+    if (parsed.length === 0) {
+      setSaveWarning('Log reps for at least one set before saving.')
+      return
+    }
+    setSaveWarning(clampedAny ? `RIR clamped to 0-${MAX_RIR}.` : null)
     onSave(activeId, name, parsed, orderIndex, swapped ? { swappedFromRef: slot.ref.id, swapReason } : undefined)
   }
 
@@ -282,7 +326,12 @@ export function SessionExerciseCard({ slot, orderIndex, details, history, isDelo
             )}
           </div>
 
-          {contra.length > 0 && (
+          {contraViolations.length > 0 && (
+            <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] text-red-300">
+              Flagged for your {contraViolations.map(prettyMuscle).join(', ')} issue — consider swapping to a safer alternative below.
+            </p>
+          )}
+          {contra.length > 0 && contraViolations.length === 0 && (
             <p className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-400">
               Caution ({contra.map(prettyMuscle).join(', ')}) — ease off if it aggravates the area.
             </p>
@@ -390,6 +439,11 @@ export function SessionExerciseCard({ slot, orderIndex, details, history, isDelo
                 </div>
               )
             })}
+            {saveWarning && (
+              <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-300">
+                {saveWarning}
+              </p>
+            )}
             <button
               type="button"
               onClick={save}

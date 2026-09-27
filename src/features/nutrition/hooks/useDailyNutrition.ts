@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
-import { localTodayISO } from '../../../lib/utils'
+import { useLocalToday } from '../../../hooks/useLocalToday'
 import type { InsertTables, Tables } from '../../../types/supabase'
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
@@ -38,13 +38,37 @@ export interface DailyTotals {
 
 const EMPTY_TOTALS: DailyTotals = { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 }
 
+// Deterministic per-item dedupe key: retrying the same parse batch (same user,
+// date, and item content) reproduces the same key, so a network-fail-then-retry
+// re-submit is skipped by the `meal_logs_user_dedupe_uidx` unique index instead
+// of creating a second row. Not a real UUID (no randomness) — just formatted as one.
+function fnv1a(str: string, seed: number): number {
+  let hash = seed
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return hash >>> 0
+}
+
+function dedupeKeyFor(seed: string): string {
+  const hex = [0x811c9dc5, 0x9e3779b9, 0x85ebca6b, 0xc2b2ae35]
+    .map(salt => fnv1a(seed, salt).toString(16).padStart(8, '0'))
+    .join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`
+}
+
 export function useDailyNutrition() {
   const { user } = useAuth()
   const [meals, setMeals] = useState<MealLogEntry[]>([])
   const [loading, setLoading] = useState(true)
-  // Captured once at mount: prevents date from flipping mid-session.
-  const todayRef = useRef(localTodayISO())
-  const today = todayRef.current
+  // Local-date-reactive: reads current local date, re-renders on rollover
+  // (visibilitychange, focus, or 60-second interval). Prior behavior captured
+  // the date at mount, which sent every meal past midnight to yesterday (B19).
+  // If the parse is mid-flight when the date flips, the resolved log_date
+  // reflects the moment of INSERT, which is the semantically correct "when
+  // I ate this."
+  const today = useLocalToday()
 
   const fetchMeals = useCallback(async (opts?: { silent?: boolean }) => {
     if (!user) { setLoading(false); return }
@@ -105,15 +129,18 @@ export function useDailyNutrition() {
   const addMeals = useCallback(
     async (entries: NewMealLogEntry[]) => {
       if (!user || entries.length === 0) return
-      const rows: InsertTables<'meal_logs'>[] = entries.map((entry) => ({
+      const rows: InsertTables<'meal_logs'>[] = entries.map((entry, index) => ({
         user_id: user.id,
         log_date: today,
+        dedupe_key: dedupeKeyFor(
+          [user.id, today, index, entry.meal_type, entry.food_name, entry.servings, entry.calories].join('|'),
+        ),
         ...entry,
       }))
 
       const { data, error } = await supabase
         .from('meal_logs')
-        .insert(rows)
+        .upsert(rows, { onConflict: 'user_id,dedupe_key', ignoreDuplicates: true })
         .select(MEAL_LOG_SELECT)
 
       if (!error && data) {

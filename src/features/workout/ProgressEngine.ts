@@ -122,6 +122,16 @@ export function getRecommendation(
   }
 
   if (isDeloadWeek) {
+    // Bodyweight / timed exercises log weight_kg = 0. Applying the 60% deload
+    // formula would recommend "0kg (60% of last)" — nonsensical. Short-circuit
+    // to the rep-progression deload: hold the load, ease the reps.
+    if (lastWeight === 0) {
+      return {
+        recommendedWeight: 0,
+        recommendedReps: exercise.targetRepsMin,
+        reason: 'Deload week — keep it easy, aim for the lower end of the rep range',
+      }
+    }
     const deloadWeight = Math.round((lastWeight * 0.6) / MIN_WEIGHT_INCREMENT) * MIN_WEIGHT_INCREMENT
     return {
       recommendedWeight: deloadWeight,

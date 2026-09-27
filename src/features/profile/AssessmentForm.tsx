@@ -30,6 +30,29 @@ export function AssessmentForm({ existingId, existingData, version = 1, onComple
 
   const totalSteps = STEP_LABELS.length
 
+  const stepValidation = (idx: number): string | null => {
+    if (idx === 0) {
+      const b = data.basics
+      if (!b.display_name.trim()) return 'Display name is required'
+      if (b.age == null || b.age < 10 || b.age > 100) return 'Age must be 10–100'
+      if (!b.sex) return 'Select a sex'
+      if (b.height_cm == null || b.height_cm < 100 || b.height_cm > 230) return 'Height must be 100–230 cm'
+      if (b.current_weight_kg == null || b.current_weight_kg < 30 || b.current_weight_kg > 250) return 'Current weight must be 30–250 kg'
+      if (b.target_weight_kg == null || b.target_weight_kg < 30 || b.target_weight_kg > 250) return 'Target weight must be 30–250 kg'
+    }
+    if (idx === 1 && !data.goals.primary) return 'Pick a primary goal'
+    if (idx === 2 && !data.training.level) return 'Pick your experience level'
+    if (idx === 3) {
+      const a = data.availability
+      if (!a.days_per_week || a.days_per_week < 1 || a.days_per_week > 7) return 'Days/week must be 1–7'
+      if (!a.session_minutes) return 'Pick session length'
+    }
+    return null
+  }
+
+  const currentStepError = stepValidation(step)
+  const canAdvance = currentStepError == null
+
   const saveProgress = useCallback(
     async (responses: AssessmentResponses) => {
       if (!user) return
@@ -62,6 +85,10 @@ export function AssessmentForm({ existingId, existingData, version = 1, onComple
   )
 
   const goNext = async () => {
+    if (currentStepError) {
+      setError(currentStepError)
+      return
+    }
     await saveProgress(data)
     setStep((s) => Math.min(s + 1, totalSteps - 1))
   }
@@ -70,6 +97,25 @@ export function AssessmentForm({ existingId, existingData, version = 1, onComple
 
   const handleComplete = async () => {
     if (!user || !assessmentId) return
+    const basicsErr = stepValidation(0)
+    if (basicsErr) {
+      setError(basicsErr)
+      setStep(0)
+      return
+    }
+    const b = data.basics
+    if (
+      !b.display_name.trim() ||
+      b.age == null ||
+      !b.sex ||
+      b.height_cm == null ||
+      b.current_weight_kg == null ||
+      b.target_weight_kg == null
+    ) {
+      setError('Basics are incomplete')
+      setStep(0)
+      return
+    }
     setSaving(true)
     setError('')
 
@@ -82,12 +128,12 @@ export function AssessmentForm({ existingId, existingData, version = 1, onComple
 
       const { error: profErr } = await supabase.from('profiles').upsert({
         id: user.id,
-        display_name: data.basics.display_name,
-        age: data.basics.age,
-        sex: data.basics.sex,
-        height_cm: data.basics.height_cm,
-        current_weight_kg: data.basics.current_weight_kg,
-        target_weight_kg: data.basics.target_weight_kg,
+        display_name: b.display_name.trim(),
+        age: b.age,
+        sex: b.sex,
+        height_cm: b.height_cm,
+        current_weight_kg: b.current_weight_kg,
+        target_weight_kg: b.target_weight_kg,
         updated_at: new Date().toISOString(),
       })
       if (profErr) throw profErr
@@ -166,7 +212,8 @@ export function AssessmentForm({ existingId, existingData, version = 1, onComple
             <button
               type="button"
               onClick={handleComplete}
-              disabled={saving}
+              disabled={saving || stepValidation(0) != null}
+              title={stepValidation(0) ?? ''}
               className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-600 py-3 font-semibold text-white transition-colors hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50"
             >
               <Sparkles size={18} />
@@ -176,7 +223,8 @@ export function AssessmentForm({ existingId, existingData, version = 1, onComple
             <button
               type="button"
               onClick={goNext}
-              disabled={saving}
+              disabled={saving || !canAdvance}
+              title={currentStepError ?? ''}
               className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-600 py-3 font-semibold text-white transition-colors hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50"
             >
               {saving ? 'Saving…' : 'Next'}

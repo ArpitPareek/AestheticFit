@@ -93,8 +93,6 @@ const UPPER: DayRoutine = {
   ],
 }
 
-const LOWER = LEGS
-
 const CORE_ARMS: DayRoutine = {
   warmup: [
     GENERAL_PULSE,
@@ -128,15 +126,17 @@ const FULL_BODY: DayRoutine = {
   ],
 }
 
-// Ordered: first keyword that matches the label wins, so "Push" beats the
-// full-body fallback and "Delt + Arm + Core" maps to the core/arms routine.
+// Ordered: first keyword that matches the label wins.
+// Lower-body tokens MUST beat upper-body tokens — a coach label like
+// "Lower B + Delts" would otherwise match /delt/ first and hand a squat day
+// an arm-circle warm-up (B09 — injury risk). Match squat/hinge/leg cues
+// (including "lower") BEFORE any upper-body vocab.
 const FOCUS_MATCHERS: { test: RegExp; routine: DayRoutine }[] = [
+  { test: /(lower|leg|quad|squat|hinge|hip|glute|ham|calf)/i, routine: LEGS },
   { test: /push/i, routine: PUSH },
   { test: /pull/i, routine: PULL },
-  { test: /leg/i, routine: LEGS },
-  { test: /(delt|arm|core|abs)/i, routine: CORE_ARMS },
   { test: /upper/i, routine: UPPER },
-  { test: /lower/i, routine: LOWER },
+  { test: /(delt|arm|core|abs)/i, routine: CORE_ARMS },
 ]
 
 /** Resolve a day's warm-up + cool-down routine from its plan label. */

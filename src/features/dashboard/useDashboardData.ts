@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
-import { localTodayISO } from '../../lib/utils'
+import { useProfile } from '../profile/ProfileContext'
+import { useLocalToday } from '../../hooks/useLocalToday'
+import {
+  getRoutineForProfile,
+  getAmStepsForDay,
+  getDayOfWeek,
+} from '../../lib/constants/skincare'
 import type { Tables } from '../../types/supabase'
 
 type SkinLogChecklist = Pick<Tables<'skin_logs'>, 'routine_type' | 'steps_done'>
@@ -18,6 +24,7 @@ interface DashboardSnapshot {
 
 export function useDashboardData() {
   const { user } = useAuth()
+  const { profile } = useProfile()
   const [data, setData] = useState<DashboardSnapshot>({
     latestWeight: null,
     lastSleep: null,
@@ -29,7 +36,7 @@ export function useDashboardData() {
   })
   const [loading, setLoading] = useState(true)
 
-  const today = localTodayISO()
+  const today = useLocalToday()
 
   const load = useCallback(async () => {
     if (!user) return
@@ -64,10 +71,16 @@ export function useDashboardData() {
     const skinLogs = skinRes.data ?? []
     const amLog = skinLogs.find((s) => s.routine_type === 'am')
     const pmLog = skinLogs.find((s) => s.routine_type === 'pm')
-    const hasDoneSteps = (log: SkinLogChecklist | undefined) => {
-      if (!log) return false
-      const vals = Object.values(log.steps_done as unknown as Record<string, boolean>)
-      return vals.length > 0 && vals.every(Boolean)
+
+    const routine = getRoutineForProfile(profile?.sex ?? null)
+    const today_dow = getDayOfWeek()
+    const amExpectedIds = getAmStepsForDay(routine, today_dow).map((s) => s.id)
+    const pmExpectedIds = routine.pmRoutines[today_dow].steps.map((s) => s.id)
+
+    const allDone = (log: SkinLogChecklist | undefined, expected: string[]) => {
+      if (!log || expected.length === 0) return false
+      const steps = log.steps_done as unknown as Record<string, boolean>
+      return expected.every((id) => steps[id] === true)
     }
 
     setData({
@@ -75,12 +88,12 @@ export function useDashboardData() {
       lastSleep: dailyRes.data?.sleep_hours ?? null,
       todaySteps: dailyRes.data?.steps ?? null,
       todayWater: dailyRes.data?.water_glasses ?? null,
-      amSkinDone: hasDoneSteps(amLog),
-      pmSkinDone: hasDoneSteps(pmLog),
+      amSkinDone: allDone(amLog, amExpectedIds),
+      pmSkinDone: allDone(pmLog, pmExpectedIds),
       workoutDoneToday: (workoutRes.count ?? 0) > 0,
     })
     setLoading(false)
-  }, [user, today])
+  }, [user, today, profile?.sex])
 
   useEffect(() => { load() }, [load])
 

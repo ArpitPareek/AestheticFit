@@ -4,18 +4,12 @@ import { useProfile } from '../profile/ProfileContext'
 import { useAuth } from '../auth/AuthContext'
 import { PhotoCaptureRow } from './PhotoTimeline'
 import type { ProgressPhotosApi } from './hooks/useProgressPhotos'
-
-const pad = (n: number) => String(n).padStart(2, '0')
-function localTodayISO(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
+import { localTodayISO } from '../../lib/utils'
 
 function weeksSince(start: string | null): number {
   if (!start) return 0
-  const s = new Date(start)
+  const s = new Date(start + 'T00:00:00')
   const n = new Date()
-  s.setHours(0, 0, 0, 0)
   n.setHours(0, 0, 0, 0)
   return Math.max(0, Math.floor((n.getTime() - s.getTime()) / 604800000))
 }

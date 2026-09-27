@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
 import { localTodayISO, localDateISO } from '../../../lib/utils'
+import { useLocalToday } from '../../../hooks/useLocalToday'
 
 export type CardioIntensity = 'zone2' | 'low' | 'moderate' | 'high'
 export type CaloriesSource = 'estimated' | 'measured'
@@ -49,7 +50,13 @@ export function useCardioLogs() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  const { start: weekStart, end: weekEnd } = isoWeekBounds(new Date())
+  // Re-derive on local-date rollover so the week window advances at midnight
+  // even if the tab has been open all night (B20).
+  const today = useLocalToday()
+  const { start: weekStart, end: weekEnd } = useMemo(
+    () => isoWeekBounds(new Date(`${today}T00:00:00`)),
+    [today],
+  )
 
   const load = useCallback(async () => {
     if (!user) return

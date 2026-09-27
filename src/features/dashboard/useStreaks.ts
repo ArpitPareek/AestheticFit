@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
-import { localTodayISO } from '../../lib/utils'
+import { useLocalToday } from '../../hooks/useLocalToday'
 
 interface StreakData {
   currentStreak: number
@@ -20,7 +20,7 @@ export function useStreaks() {
   })
   const [loading, setLoading] = useState(true)
 
-  const today = localTodayISO()
+  const today = useLocalToday()
 
   const load = useCallback(async () => {
     if (!user) return
@@ -70,13 +70,16 @@ export function useStreaks() {
       .maybeSingle()
 
     if (!existing) {
-      await supabase.from('streaks').insert({
-        user_id: user.id,
-        streak_type: 'overall',
-        current_count: 1,
-        longest_count: 1,
-        last_active_date: today,
-      })
+      await supabase.from('streaks').upsert(
+        {
+          user_id: user.id,
+          streak_type: 'overall',
+          current_count: 1,
+          longest_count: 1,
+          last_active_date: today,
+        },
+        { onConflict: 'user_id,streak_type' },
+      )
     } else {
       const last = existing.last_active_date as string | null
       if (last === today) return
@@ -92,15 +95,17 @@ export function useStreaks() {
       }
 
       const newLongest = Math.max(existing.longest_count as number, newCount)
-      await supabase
-        .from('streaks')
-        .update({
+      await supabase.from('streaks').upsert(
+        {
+          user_id: user.id,
+          streak_type: 'overall',
           current_count: newCount,
           longest_count: newLongest,
           last_active_date: today,
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', existing.id)
+        },
+        { onConflict: 'user_id,streak_type' },
+      )
     }
 
     await load()

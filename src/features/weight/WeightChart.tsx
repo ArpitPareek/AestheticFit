@@ -10,6 +10,7 @@ import {
   Legend,
 } from 'recharts'
 import type { WeightLog } from './hooks/useWeightLogs'
+import { localDateISO } from '../../lib/utils'
 
 interface WeightChartProps {
   logs: WeightLog[]
@@ -28,7 +29,7 @@ export function WeightChart({ logs }: WeightChartProps) {
   const chartData = useMemo(() => {
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - 84)
-    const cutoffStr = cutoff.toISOString().slice(0, 10)
+    const cutoffStr = localDateISO(cutoff)
 
     const recent = logs.filter(l => l.log_date >= cutoffStr)
     if (recent.length === 0) return []

@@ -84,12 +84,21 @@ export async function promoteAiFood(
     updated_at: nowIso,
   }
 
-  const { error: insertError } = await supabase.from('custom_foods').insert(newFood)
+  // Arbiter is (user_id, name_lower) — a generated column from migration 055
+  // that mirrors lower(name). Column-list arbiters are the only form supabase-js
+  // supports; expression arbiters like 'user_id,lower(name)' throw at runtime.
+  const { error: insertError } = await supabase
+    .from('custom_foods')
+    .upsert(newFood, { onConflict: 'user_id,name_lower' })
   if (insertError) return null
 
-  // 4. Seed the shared AI cache so the next parse-meal call skips the AI.
+  // 4. Seed the per-user AI cache so the next parse-meal call skips the AI.
   // Ignore duplicates — another item/session may have cached the same name.
+  // Migration 051 scoped ai_food_estimates by user_id; upsert arbiter is now
+  // (user_id, normalized_name), and user_id must be set (RLS insert policy
+  // requires user_id = auth.uid()).
   const estimate = {
+    user_id: userId,
     normalized_name: norm,
     name: food.name,
     calories: Math.round(food.perUnit.calories),
@@ -106,7 +115,7 @@ export async function promoteAiFood(
   await supabase
     .from('ai_food_estimates')
     .upsert(estimate as InsertTables<'ai_food_estimates'>, {
-      onConflict: 'normalized_name',
+      onConflict: 'user_id,normalized_name',
       ignoreDuplicates: true,
     })
 

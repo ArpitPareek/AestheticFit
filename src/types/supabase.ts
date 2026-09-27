@@ -12,6 +12,7 @@ export interface Database {
       ai_food_estimates: {
         Row: {
           id: number
+          user_id: string | null
           normalized_name: string
           name: string
           calories: number
@@ -25,7 +26,8 @@ export interface Database {
           created_at: string
         }
         Insert: {
-          id: number
+          id?: number
+          user_id?: string | null
           normalized_name: string
           name: string
           calories: number
@@ -36,10 +38,11 @@ export interface Database {
           serving_size: string
           serving_grams: number
           source: string
-          created_at: string
+          created_at?: string
         }
         Update: {
           id?: number
+          user_id?: string | null
           normalized_name?: string
           name?: string
           calories?: number
@@ -601,6 +604,7 @@ export interface Database {
           item_label: string | null
           fiber_g: number
           source: string
+          dedupe_key: string | null
         }
         Insert: {
           id?: string
@@ -620,6 +624,7 @@ export interface Database {
           item_label?: string | null
           fiber_g?: number
           source?: string
+          dedupe_key?: string | null
         }
         Update: {
           id?: string
@@ -639,6 +644,7 @@ export interface Database {
           item_label?: string | null
           fiber_g?: number
           source?: string
+          dedupe_key?: string | null
         }
         Relationships: [
           {
@@ -1209,6 +1215,7 @@ export interface Database {
           user_id: string
           plan_id: string
           plan_version: number
+          plan_version_id: string | null
           workout_date: string
           day_label: string
           started_at: string
@@ -1222,6 +1229,7 @@ export interface Database {
           user_id: string
           plan_id?: string
           plan_version?: number
+          plan_version_id?: string | null
           workout_date: string
           day_label?: string
           started_at: string
@@ -1235,6 +1243,7 @@ export interface Database {
           user_id?: string
           plan_id?: string
           plan_version?: number
+          plan_version_id?: string | null
           workout_date?: string
           day_label?: string
           started_at?: string

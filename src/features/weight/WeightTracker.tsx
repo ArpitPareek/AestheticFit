@@ -5,6 +5,7 @@ import { useWeightTrend } from './hooks/useWeightTrend'
 import { useProfile } from '../profile/ProfileContext'
 import { WeightChart } from './WeightChart'
 import type { AssessmentResponses } from '../profile/types'
+import { localDateISO } from '../../lib/utils'
 
 export function WeightTracker() {
   const { logs, loading, saving, upsert } = useWeightLogs()
@@ -244,9 +245,9 @@ function computeTrend(logs: { log_date: string; weight_kg: number }[]): TrendRes
   const fiveWeeksAgo = new Date(now)
   fiveWeeksAgo.setDate(now.getDate() - 42)
 
-  const recentStr = oneWeekAgo.toISOString().slice(0, 10)
-  const fourStr = fourWeeksAgo.toISOString().slice(0, 10)
-  const fiveStr = fiveWeeksAgo.toISOString().slice(0, 10)
+  const recentStr = localDateISO(oneWeekAgo)
+  const fourStr = localDateISO(fourWeeksAgo)
+  const fiveStr = localDateISO(fiveWeeksAgo)
 
   const recentLogs = logs.filter(l => l.log_date >= recentStr)
   const olderLogs = logs.filter(l => l.log_date >= fiveStr && l.log_date < fourStr)
@@ -291,7 +292,7 @@ function computeGoal(
   if (logs.length >= 4) {
     const fourWeeksAgo = new Date()
     fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
-    const cutoff = fourWeeksAgo.toISOString().slice(0, 10)
+    const cutoff = localDateISO(fourWeeksAgo)
     const olderLogs = logs.filter(l => l.log_date <= cutoff)
     if (olderLogs.length > 0) {
       const oldWeight = olderLogs[olderLogs.length - 1].weight_kg

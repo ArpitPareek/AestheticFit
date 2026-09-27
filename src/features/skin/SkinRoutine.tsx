@@ -3,6 +3,7 @@ import { Sun, Moon, Scissors, ChevronDown, ChevronUp, Timer, AlertTriangle, Clip
 import { useProfile } from '../profile/ProfileContext'
 import { useSkinLogs } from './hooks/useSkinLogs'
 import { useSkinCheckins } from './hooks/useSkinCheckins'
+import { localDateISO } from '../../lib/utils'
 import { SkinCheckinForm, CheckinHistory } from './SkinCheckin'
 import {
   getRoutineForProfile,
@@ -214,7 +215,7 @@ export function SkinRoutine() {
     const diff = selectedIdx - todayIdx
     const d = new Date(today)
     d.setDate(today.getDate() + diff)
-    return d.toISOString().slice(0, 10)
+    return localDateISO(d)
   })()
 
   const { amLog, pmLog, loading, toggleStep } = useSkinLogs(selectedDate)

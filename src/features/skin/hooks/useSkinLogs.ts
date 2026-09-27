@@ -39,23 +39,24 @@ export function useSkinLogs(logDate: string) {
   ) => {
     if (!user) return
     const existing = routineType === 'am' ? amLog : pmLog
-    const newSteps = { ...(existing?.steps_done ?? {}), [stepId]: checked }
-
-    if (existing) {
-      await supabase
-        .from('skin_logs')
-        .update({ steps_done: newSteps })
-        .eq('id', existing.id)
+    const newSteps = { ...(existing?.steps_done ?? {}) }
+    if (checked) {
+      newSteps[stepId] = true
     } else {
-      await supabase
-        .from('skin_logs')
-        .insert({
+      delete newSteps[stepId]
+    }
+
+    await supabase
+      .from('skin_logs')
+      .upsert(
+        {
           user_id: user.id,
           log_date: logDate,
           routine_type: routineType,
           steps_done: newSteps,
-        })
-    }
+        },
+        { onConflict: 'user_id,log_date,routine_type' },
+      )
     await load()
   }, [user, logDate, amLog, pmLog, load])
 

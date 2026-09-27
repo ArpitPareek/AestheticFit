@@ -409,13 +409,45 @@ function ProteinGap({ current, target }: { current: number; target: number }) {
 
 // ─── Main Component ────────────────────────────────────────
 export function MealLogger() {
-  const { totals, mealsByType, addMeal, addMeals, removeMeal, loading } = useDailyNutrition()
+  const { meals, totals, mealsByType, addMeal, addMeals, removeMeal, reload, loading } = useDailyNutrition()
   const { targets, goalMode, loading: targetsLoading } = useNutritionTargets()
   const [pickerMeal, setPickerMeal] = useState<MealType | null>(null)
   const [showMyFoods, setShowMyFoods] = useState(false)
 
   const [toast, setToast] = useState<string | null>(null)
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 1500) }
+
+  // Pending soft-delete: keep the row visible + hide it locally so the user can
+  // undo before we actually hit Supabase. 5-second grace matches iOS standards.
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string; timer: ReturnType<typeof setTimeout> } | null>(null)
+
+  const handleRequestDelete = useCallback((id: string) => {
+    const target = meals.find((m) => m.id === id)
+    if (!target) return
+    if (pendingDelete) {
+      // Fire the previous pending delete immediately so undo state stays 1-deep.
+      clearTimeout(pendingDelete.timer)
+      void removeMeal(pendingDelete.id)
+    }
+    const timer = setTimeout(() => {
+      void removeMeal(id)
+      setPendingDelete(null)
+    }, 5000)
+    setPendingDelete({ id, name: target.food_name, timer })
+  }, [meals, pendingDelete, removeMeal])
+
+  const handleUndoDelete = useCallback(() => {
+    if (!pendingDelete) return
+    clearTimeout(pendingDelete.timer)
+    setPendingDelete(null)
+    void reload()
+  }, [pendingDelete, reload])
+
+  const isHidden = (id: string) => pendingDelete?.id === id
+  const filteredByType = useCallback(
+    (type: MealType) => mealsByType(type).filter((m) => !isHidden(m.id)),
+    [mealsByType, pendingDelete],
+  )
 
   const handleAddFood = useCallback(
     async (food: Food, servings: number) => {
@@ -523,9 +555,9 @@ export function MealLogger() {
           type={type}
           label={label}
           icon={icon}
-          entries={mealsByType(type)}
+          entries={filteredByType(type)}
           onAdd={() => setPickerMeal(type)}
-          onRemove={removeMeal}
+          onRemove={handleRequestDelete}
         />
       ))}
 
@@ -554,6 +586,19 @@ export function MealLogger() {
 
       {toast && (
         <p className="py-1 text-center text-xs text-red-400">{toast}</p>
+      )}
+
+      {/* Undo bar for meal delete — 5-second grace */}
+      {pendingDelete && (
+        <div className="fixed bottom-20 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl bg-slate-800 px-4 py-2.5 shadow-lg ring-1 ring-slate-700">
+          <span className="text-xs text-slate-300">Removed “{pendingDelete.name}”</span>
+          <button
+            onClick={handleUndoDelete}
+            className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white active:bg-emerald-700"
+          >
+            Undo
+          </button>
+        </div>
       )}
     </div>
   )

@@ -9,6 +9,7 @@ import { generatePhasePlanData } from './planGeneratorCore'
 import { getPhaseTemplates } from './planTemplates'
 import type { GoalMode, LibraryExercise, PlanData } from './planTypes'
 import type { Json } from '../../types/supabase'
+import { localTodayISO } from '../../lib/utils'
 
 export { generatePhasePlanData } from './planGeneratorCore'
 
@@ -104,7 +105,7 @@ export async function generateDraftPlan(userId: string): Promise<WorkoutPlanRow>
       phase: phaseNumber,
       total_phases: templates.length,
       weeks_per_phase: template.weekEnd - template.weekStart + 1,
-      start_date: new Date().toISOString().slice(0, 10),
+      start_date: localTodayISO(),
       is_active: false,
     })
     .select('id, plan_name, plan_data, phase, total_phases, start_date, is_active')
@@ -184,7 +185,7 @@ export async function advanceToNextPhase(userId: string): Promise<void> {
     phase: nextPhaseNumber,
     total_phases: templates.length,
     weeks_per_phase: template.weekEnd - template.weekStart + 1,
-    start_date: new Date().toISOString().slice(0, 10),
+    start_date: localTodayISO(),
     is_active: true,
   })
   if (insertError) throw insertError
