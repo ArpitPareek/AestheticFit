@@ -14,6 +14,8 @@ interface WorkoutLoggerState {
   swapMap: Record<string, string>
   saving: boolean
   finished: boolean
+  /** Non-null while the 5-second "Undo" window on a just-finished workout is open. */
+  pendingUndo: { workoutLogId: string; timer: ReturnType<typeof setTimeout> } | null
 }
 
 /**
@@ -31,6 +33,7 @@ export function useWorkoutLogger(planId: string | null, dayLabel: string, workou
     swapMap: {},
     saving: false,
     finished: false,
+    pendingUndo: null,
   })
   const workoutLogIdRef = useRef<string | null>(null)
 
@@ -44,7 +47,10 @@ export function useWorkoutLogger(planId: string | null, dayLabel: string, workou
     // Switching dates: clear the prior date's in-memory log first so we never
     // show one day's sets while logging against another.
     workoutLogIdRef.current = null
-    setState((s) => ({ ...s, workoutLogId: null, startedAt: null, loggedExercises: {}, swapMap: {}, finished: false }))
+    setState((s) => {
+      if (s.pendingUndo) clearTimeout(s.pendingUndo.timer)
+      return { ...s, workoutLogId: null, startedAt: null, loggedExercises: {}, swapMap: {}, finished: false, pendingUndo: null }
+    })
     ;(async () => {
       const { data: log } = await supabase
         .from('workout_logs')
@@ -247,10 +253,17 @@ export function useWorkoutLogger(planId: string | null, dayLabel: string, workou
     [user, ensureWorkoutLog],
   )
 
-  const finishWorkout = useCallback(async (opts?: { prehabSkipped?: boolean }): Promise<{
+  const finishWorkout = useCallback(async (opts?: { prehabSkipped?: boolean; calories?: number | null }): Promise<{
     duration: number
+    /** Explicit, user-correctable duration persisted at finish; null when the
+     *  elapsed timestamp delta was too small to trust (< 5 min — first-save-to-
+     *  finish burst) and the user should type the real value. */
+    duration_min: number | null
     totalVolume: number
     exerciseCount: number
+    calories: number | null
+    /** false when RLS rejected the finish write (session outside the editable window). */
+    persisted: boolean
   } | null> => {
     const logId = workoutLogIdRef.current
     if (!logId) return null
@@ -266,17 +279,36 @@ export function useWorkoutLogger(planId: string | null, dayLabel: string, workou
 
     setState((s) => ({ ...s, saving: true }))
 
-    const patch: UpdateTables<'workout_logs'> = { completed_at: new Date().toISOString() }
-    if (opts?.prehabSkipped) patch.prehab_skipped = true
-
-    await supabase
-      .from('workout_logs')
-      .update(patch)
-      .eq('id', logId)
-
     const duration = state.startedAt
       ? Math.round((Date.now() - state.startedAt.getTime()) / 60000)
       : 0
+
+    const patch: UpdateTables<'workout_logs'> = { completed_at: new Date().toISOString() }
+    if (opts?.prehabSkipped) patch.prehab_skipped = true
+    // Display-only strength estimate (see strengthCalories.ts). Never fed into
+    // nutrition targets — the adaptive TDEE engine already captures training.
+    const calories = opts?.calories != null && opts.calories > 0 ? opts.calories : null
+    if (calories != null) {
+      patch.calories = calories
+      patch.calories_source = 'estimated'
+    }
+    // Seed duration_min from the elapsed value ONLY when it's plausible. The
+    // timestamp delta is known-bad when sets are logged in a burst (started_at =
+    // first save, completed_at = finish), so anything under 5 min is left NULL for
+    // the user to fill in on the summary card (see migration 059). Never fed into
+    // calories — estimateStrengthCalories is intentionally duration-independent.
+    const duration_min = duration >= 5 ? duration : null
+    if (duration_min != null) patch.duration_min = duration_min
+
+    // .select() so we can tell whether the row was actually written: the
+    // immutability RLS policy (052/058) silently updates 0 rows for a session
+    // outside the editable window, and a bare update reports no error for that.
+    const { data: updated } = await supabase
+      .from('workout_logs')
+      .update(patch)
+      .eq('id', logId)
+      .select('id')
+    const persisted = (updated?.length ?? 0) > 0
 
     let totalVolume = 0
     let exerciseCount = 0
@@ -287,14 +319,55 @@ export function useWorkoutLogger(planId: string | null, dayLabel: string, workou
       }
     }
 
-    setState((s) => ({ ...s, saving: false, finished: true }))
-    return { duration, totalVolume, exerciseCount }
+    // B37-workout: 5-second undo window. Soft-deletes via `deleted_at` (migration
+    // 056) rather than a hard delete, matching the SELECT policy that hides
+    // deleted_at IS NOT NULL rows — same 1-day recency UPDATE policy from 052
+    // already covers this write.
+    const timer = setTimeout(() => {
+      // `deleted_at` predates the last `supabase gen types` run (migration 056) —
+      // cast until types are regenerated against the live schema.
+      const softDelete = { deleted_at: new Date().toISOString() } as unknown as UpdateTables<'workout_logs'>
+      void supabase.from('workout_logs').update(softDelete).eq('id', logId)
+      setState((s) => (s.pendingUndo?.workoutLogId === logId ? { ...s, pendingUndo: null } : s))
+    }, 5000)
+
+    setState((s) => ({ ...s, saving: false, finished: true, pendingUndo: { workoutLogId: logId, timer } }))
+    return { duration, duration_min, totalVolume, exerciseCount, calories, persisted }
   }, [state.startedAt, state.loggedExercises])
+
+  // User-correctable duration. finishWorkout seeds duration_min only when the
+  // timestamp delta is plausible; this lets the summary card record the real
+  // session length (or fix a wrong seed). Uses .select() to confirm the write
+  // survived the immutability RLS window, mirroring finishWorkout.
+  const updateDuration = useCallback(
+    async (minutes: number): Promise<boolean> => {
+      const logId = workoutLogIdRef.current
+      if (!logId) return false
+      const clamped = Math.max(0, Math.min(600, Math.round(minutes)))
+      const { data } = await supabase
+        .from('workout_logs')
+        .update({ duration_min: clamped } satisfies UpdateTables<'workout_logs'>)
+        .eq('id', logId)
+        .select('id')
+      return (data?.length ?? 0) > 0
+    },
+    [],
+  )
+
+  const undoFinish = useCallback(() => {
+    setState((s) => {
+      if (!s.pendingUndo) return s
+      clearTimeout(s.pendingUndo.timer)
+      return { ...s, pendingUndo: null, finished: false }
+    })
+  }, [])
 
   return {
     ...state,
     logSet,
     saveExerciseSets,
     finishWorkout,
+    updateDuration,
+    undoFinish,
   }
 }

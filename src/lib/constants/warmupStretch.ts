@@ -15,6 +15,33 @@ export interface RoutineItem {
   detail: string
 }
 
+// Plain-English "what this move is" for the less obvious names, keyed by the
+// item `key` so a hint is written once even though a move appears in several
+// routines. Names that are self-explanatory (arm circles, glute bridges) are
+// left out — moveHint() returns undefined and the card shows no subtitle.
+const MOVE_HINTS: Record<string, string> = {
+  band_pull_apart: 'Hold a band in front of you and pull it apart to your chest — wakes up the upper back.',
+  shoulder_dislocates: 'Hold a band/stick wide and sweep it over your head and behind you — opens the shoulders.',
+  scap_pushup: 'Top of a push-up position; squeeze shoulder blades together and push apart, arms straight.',
+  scap_pullup: 'Hang from a bar and just shrug down (no bend at the elbow) — preps the back for pulling.',
+  cat_cow: 'On all fours, slowly round your back then arch it — gentle spine mobiliser.',
+  thoracic_rot: 'Rotate your upper back to open the chest to one side, then the other.',
+  upper_trap: 'Gently tilt your head to one side to stretch the side of your neck.',
+  figure_four: 'Cross one ankle over the opposite knee and lean in — stretches the glute.',
+  hip_circles: 'Big slow circles at the hip to loosen it up (90-90 = both knees bent at 90°, rotate side to side).',
+  dead_bug: 'Lie on your back, lower opposite arm and leg slowly — core control drill.',
+  cobra: 'Lie face-down and press your chest up, hips on the floor — stretches the abs.',
+  pulse_raiser: 'Easy movement to raise your heart rate and warm the body before lifting.',
+  light_press: 'A couple of easy sets with just the bar to groove the movement before working sets.',
+  light_row: 'A couple of easy warm-up sets before your working weight.',
+  light_squat_ramp: 'A couple of progressively heavier warm-up sets before your working weight.',
+}
+
+/** Plain-English hint for a warm-up/cool-down move, or undefined if none. */
+export function moveHint(key: string): string | undefined {
+  return MOVE_HINTS[key]
+}
+
 export interface DayRoutine {
   warmup: RoutineItem[]
   cooldown: RoutineItem[]

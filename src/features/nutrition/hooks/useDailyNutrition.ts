@@ -58,7 +58,7 @@ function dedupeKeyFor(seed: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`
 }
 
-export function useDailyNutrition() {
+export function useDailyNutrition(targetDate?: string) {
   const { user } = useAuth()
   const [meals, setMeals] = useState<MealLogEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -68,7 +68,10 @@ export function useDailyNutrition() {
   // If the parse is mid-flight when the date flips, the resolved log_date
   // reflects the moment of INSERT, which is the semantically correct "when
   // I ate this."
-  const today = useLocalToday()
+  const localToday = useLocalToday()
+  // A backdated log_date (B38) is explicit and must not track midnight
+  // rollover — only the live "today" view re-renders on date change.
+  const today = targetDate ?? localToday
 
   const fetchMeals = useCallback(async (opts?: { silent?: boolean }) => {
     if (!user) { setLoading(false); return }

@@ -3,7 +3,7 @@ import { Heart, Plus, Trash2, Activity, Flame, Search, Gauge } from 'lucide-reac
 import { useCardioLogs, type CardioIntensity, type CaloriesSource } from './hooks/useCardioLogs'
 import { useProfile } from '../profile/ProfileContext'
 import { useDailyLogs } from './hooks/useDailyLogs'
-import { useWeightLogs } from '../weight/hooks/useWeightLogs'
+import { useBodyweightKg } from '../weight/hooks/useBodyweightKg'
 import {
   CARDIO_ACTIVITIES,
   CATEGORY_LABEL,
@@ -15,6 +15,7 @@ import {
   type CardioCategory,
 } from '../../lib/constants/cardioActivities'
 import { localTodayISO, localDateISO } from '../../lib/utils'
+import { Term } from '../../components/ui/Term'
 
 const INTENSITY_OPTIONS: { value: CardioIntensity; label: string }[] = [
   { value: 'zone2', label: 'Zone 2' },
@@ -45,13 +46,9 @@ export function CardioTracker() {
   const { weekLogs, zone2Count, weeklyCalories, loading, saving, logSession, deleteSession } = useCardioLogs()
   const { assessment } = useProfile()
   const { todayLog } = useDailyLogs()
-  const { logs: weightLogs } = useWeightLogs()
 
   // Bodyweight for the MET calorie estimate: latest weigh-in, else assessment.
-  const weightKg =
-    (weightLogs.length ? weightLogs[weightLogs.length - 1].weight_kg : null) ??
-    assessment?.responses?.basics?.current_weight_kg ??
-    null
+  const weightKg = useBodyweightKg()
 
   const [showForm, setShowForm] = useState(false)
   const [activityKey, setActivityKey] = useState<string | null>(null)
@@ -200,7 +197,7 @@ export function CardioTracker() {
               <Heart size={16} className="text-emerald-400" />
             </div>
             <div>
-              <span className="text-xs font-medium text-slate-300">Zone-2 sessions</span>
+              <span className="text-xs font-medium text-slate-300"><Term term="zone 2">Zone-2</Term> sessions</span>
               <p className="text-lg font-bold text-white">
                 {zone2Count}
                 <span className="text-xs font-normal text-slate-400"> / {ZONE2_WEEKLY_TARGET}</span>
@@ -251,7 +248,7 @@ export function CardioTracker() {
         </div>
 
         <p className="text-[10px] text-slate-500 leading-tight">
-          Aim for 8–10k steps daily + 2× 20–25 min Zone-2 cardio per week on non-consecutive days.
+          Aim for 8–10k steps daily + 2× 20–25 min <Term term="zone 2">Zone-2</Term> cardio per week on non-consecutive days.
         </p>
       </div>
 
@@ -331,7 +328,7 @@ export function CardioTracker() {
               <div className="flex items-center justify-between rounded-lg bg-slate-800 px-2.5 py-2">
                 <span className="text-sm text-white">
                   {type}
-                  {activity && <span className="ml-1.5 text-[10px] text-slate-500">{activity.met} MET</span>}
+                  {activity && <span className="ml-1.5 text-[10px] text-slate-500">{activity.met} <Term term="met">MET</Term></span>}
                 </span>
                 <button onClick={() => { setType(''); setActivityKey(null) }} className="text-[11px] text-emerald-400">
                   Change
@@ -458,7 +455,7 @@ export function CardioTracker() {
           {/* RPE */}
           <div>
             <label className="mb-1 flex items-center gap-1 text-[10px] font-medium text-slate-500">
-              <Gauge size={11} /> Perceived effort (RPE){rpe != null && <span className="text-slate-600">· sets intensity</span>}
+              <Gauge size={11} /> How hard it felt (<Term term="rpe">RPE</Term>){rpe != null && <span className="text-slate-600">· sets the intensity</span>}
             </label>
             <div className="flex flex-wrap gap-1">
               {Array.from({ length: 10 }, (_, i) => i + 1).map((v) => (

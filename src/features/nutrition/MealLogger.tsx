@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import {
   Apple,
   BookMarked,
+  CalendarDays,
   ChevronDown,
   ChevronUp,
   CookingPot,
@@ -18,6 +19,7 @@ import { useDailyNutrition, type MealLogEntry, type MealType } from './hooks/use
 import { useNutritionTargets } from './hooks/useNutritionTargets'
 import { NaturalMealEntry } from './NaturalMealEntry'
 import { MyFoods } from './MyFoods'
+import { localDateISO, localTodayISO } from '../../lib/utils'
 import {
   FOODS,
   FOOD_CATEGORIES,
@@ -25,6 +27,38 @@ import {
   type Food,
   type FoodCategory,
 } from '../../lib/constants/foods'
+import { Term } from '../../components/ui/Term'
+
+const BACKDATE_WINDOW_DAYS = 7
+
+// ─── Meal Date Picker ──────────────────────────────────────
+function MealDatePicker({ value, onChange }: { value: string; onChange: (date: string) => void }) {
+  const today = localTodayISO()
+  const minDate = localDateISO(new Date(Date.now() - BACKDATE_WINDOW_DAYS * 86400000))
+  const isToday = value === today
+
+  return (
+    <div className="flex items-center gap-2 rounded-xl bg-card px-3 py-2.5">
+      <CalendarDays size={16} className="shrink-0 text-slate-400" />
+      <input
+        type="date"
+        value={value}
+        max={today}
+        min={minDate}
+        onChange={(e) => e.target.value && onChange(e.target.value)}
+        className="w-full bg-transparent text-sm text-white outline-none [color-scheme:dark]"
+      />
+      {!isToday && (
+        <button
+          onClick={() => onChange(today)}
+          className="shrink-0 rounded-lg bg-slate-700/60 px-2 py-1 text-[10px] font-medium text-slate-300 active:bg-slate-700"
+        >
+          Today
+        </button>
+      )}
+    </div>
+  )
+}
 
 const PORTION_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const
 
@@ -321,7 +355,7 @@ function MealSection({
           <h3 className="text-sm font-semibold text-white">{label}</h3>
           {entries.length > 0 && (
             <span className="text-xs text-slate-500">
-              {Math.round(mealCal)} cal · {Math.round(mealPro)}g pro
+              {Math.round(mealCal)} cal · {Math.round(mealPro)}g protein
             </span>
           )}
         </div>
@@ -355,8 +389,8 @@ function MealSection({
                       )}
                     </p>
                     <p className="text-[10px] text-slate-500">
-                      {Math.round(entry.calories)} cal · {Math.round(entry.protein_g)}g P ·{' '}
-                      {Math.round(entry.carbs_g)}g C · {Math.round(entry.fat_g)}g F
+                      {Math.round(entry.calories)} cal · {Math.round(entry.protein_g)}g protein ·{' '}
+                      {Math.round(entry.carbs_g)}g carbs · {Math.round(entry.fat_g)}g fat
                     </p>
                   </div>
                   <button
@@ -409,7 +443,8 @@ function ProteinGap({ current, target }: { current: number; target: number }) {
 
 // ─── Main Component ────────────────────────────────────────
 export function MealLogger() {
-  const { meals, totals, mealsByType, addMeal, addMeals, removeMeal, reload, loading } = useDailyNutrition()
+  const [selectedDate, setSelectedDate] = useState<string>(() => localTodayISO())
+  const { meals, totals, mealsByType, addMeal, addMeals, removeMeal, reload, loading } = useDailyNutrition(selectedDate)
   const { targets, goalMode, loading: targetsLoading } = useNutritionTargets()
   const [pickerMeal, setPickerMeal] = useState<MealType | null>(null)
   const [showMyFoods, setShowMyFoods] = useState(false)
@@ -502,7 +537,7 @@ export function MealLogger() {
             <span className="text-sm text-slate-400"> / {targets.protein_g}g protein</span>
           </div>
           <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-            FLOOR
+            <Term term="protein floor" className="decoration-emerald-400/60">FLOOR</Term>
           </span>
         </div>
         <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-700">
@@ -513,9 +548,9 @@ export function MealLogger() {
         </div>
         <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
           {goalMode === 'recomp'
-            ? 'Hit your protein floor first — calories second. The scale may not move; trust the mirror and lifts.'
+            ? 'Hit your protein target first — calories second. The scale may not move much; judge progress by the mirror and your lifts.'
             : goalMode === 'cut'
-              ? `Protein floor ${targets.protein_g}g is non-negotiable. Protect muscle while cutting.`
+              ? `Getting ${targets.protein_g}g protein is a must — it protects your muscle while you lose fat.`
               : `Aim for ${targets.protein_g}g protein daily.`}
         </p>
 
@@ -537,10 +572,13 @@ export function MealLogger() {
 
         {goalMode === 'cut' && (
           <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
-            IF is fine if you like it — just fuel the training slot. It's calorie-matched, no magic.
+            <Term term="if">IF</Term> (intermittent fasting) is fine if you like it — just make sure you eat around your workout. It only works by keeping calories in check, no magic.
           </p>
         )}
       </div>
+
+      {/* Backdate a meal — defaults to today, allows past 7 days only */}
+      <MealDatePicker value={selectedDate} onChange={setSelectedDate} />
 
       {/* Natural language meal entry */}
       <NaturalMealEntry addMeals={addMeals} onManual={setPickerMeal} />

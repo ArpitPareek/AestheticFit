@@ -329,6 +329,21 @@ export const FOODS: Food[] = [
     fiber_g: 3,
     source: 'ifct-approximate',
   },
+  {
+    id: 'mill-protein-roti',
+    name: 'Mill protein roti',
+    aliases: ['mill roti', 'protein roti', 'protein atta roti', 'chakki atta roti'],
+    category: 'roti_rice',
+    is_vegetarian: true,
+    serving_size: '1 roti (40 g)',
+    serving_grams: 40,
+    calories: 140,
+    protein_g: 12,
+    carbs_g: 19,
+    fat_g: 1.6,
+    fiber_g: 4,
+    source: 'manual',
+  },
 
   // ─── EGGS / PROTEIN ─────────────────────────────────────
   {

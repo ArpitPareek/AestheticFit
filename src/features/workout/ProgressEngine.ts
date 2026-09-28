@@ -89,7 +89,7 @@ export function getRecommendation(
         recommendedWeight: 0,
         recommendedReps: exercise.targetRepsMin,
         reason:
-          'First session — set assistance (or surface height) so the target reps are hard but clean. Progress by REDUCING assistance / lowering the surface, never by adding load.',
+          'First session — set the help (or surface height) so the target reps are hard but doable with good form. You get stronger by needing LESS help / a lower surface over time, never by adding weight.',
       }
     }
     return {
@@ -111,13 +111,13 @@ export function getRecommendation(
       return {
         recommendedWeight: lastWeight,
         recommendedReps: exercise.targetRepsMin,
-        reason: 'Deload — add a little assistance / raise the surface and keep the sets easy this week',
+        reason: 'Recovery week — give yourself a bit more help (or a higher surface) and keep the sets easy',
       }
     }
     return {
       recommendedWeight: lastWeight,
       recommendedReps: exercise.targetRepsMax,
-      reason: `Progress by taking a notch off the assistance (or lowering the surface) — not by adding load. Own ${exercise.targetRepsMin}-${exercise.targetRepsMax} clean reps, then reduce the help.`,
+      reason: `Get better by using a notch less help (or a lower surface) — not by adding weight. Nail ${exercise.targetRepsMin}-${exercise.targetRepsMax} clean reps, then take some help away.`,
     }
   }
 
@@ -129,14 +129,14 @@ export function getRecommendation(
       return {
         recommendedWeight: 0,
         recommendedReps: exercise.targetRepsMin,
-        reason: 'Deload week — keep it easy, aim for the lower end of the rep range',
+        reason: 'Recovery week — keep it easy, aim for the lower end of the rep range',
       }
     }
     const deloadWeight = Math.round((lastWeight * 0.6) / MIN_WEIGHT_INCREMENT) * MIN_WEIGHT_INCREMENT
     return {
       recommendedWeight: deloadWeight,
       recommendedReps: exercise.targetRepsMin,
-      reason: `Deload week — ${Math.round(deloadWeight)}kg (60% of last)`,
+      reason: `Recovery week — ${Math.round(deloadWeight)}kg (about 60% of last time, on purpose)`,
     }
   }
 
@@ -182,13 +182,13 @@ export function getRecommendation(
         return {
           recommendedWeight: newWeight,
           recommendedReps: exercise.targetRepsMin,
-          reason: `Cleared ${exercise.targetRepsMin}+ on all sets — add load to ${newWeight}kg, keep reps ${exercise.targetRepsMin}-${exercise.targetRepsMax}`,
+          reason: `Cleared ${exercise.targetRepsMin}+ on all sets — add weight to ${newWeight}kg, keep reps ${exercise.targetRepsMin}-${exercise.targetRepsMax}`,
         }
       }
       return {
         recommendedWeight: lastWeight,
         recommendedReps: exercise.targetRepsMin,
-        reason: `Hold ${lastWeight}kg until every set clears ${exercise.targetRepsMin} reps, then add load`,
+        reason: `Hold ${lastWeight}kg until every set clears ${exercise.targetRepsMin} reps, then add weight`,
       }
     }
 
@@ -200,7 +200,7 @@ export function getRecommendation(
         recommendedReps: nextReps,
         reason:
           lastAvgReps >= exercise.targetRepsMax
-            ? `Owning ${exercise.targetRepsMax} — make it harder (load/tempo/ROM), then rebuild the reps`
+            ? `Owning ${exercise.targetRepsMax} — make it harder (more weight, slower reps, or fuller range), then build the reps back up`
             : `Same load — add reps toward ${exercise.targetRepsMax} (progress by reps, not weight)`,
       }
     }

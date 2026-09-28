@@ -150,6 +150,11 @@ Return ONLY a JSON object of the exact shape:
 Rules:
 - Extract EVERY food and drink the user mentions as its OWN separate item. Never merge two foods into one, and never omit one (e.g. "2 paratha and 1 chai" MUST return two items).
 - "name": the food's common name (e.g. "toor dal", "roti", "paneer tikka").
+  KEEP any qualifier that distinguishes it from the plain version -- do NOT
+  strip words like "protein", "protein atta", "multigrain", "brown", "ragi",
+  "besan", "oats". e.g. "protein atta roti" -> "protein atta roti" (NOT "roti");
+  "multigrain bread" -> "multigrain bread" (NOT "bread"). These qualifiers change
+  the macros, so preserving them lets us match the right food.
 - "quantity": the number of "unit"s mentioned (default 1 if not stated).
 - "unit": one of piece, katori, small_katori, plate, glass, cup, tbsp, tsp, g, kg, ml -- pick the closest one; if grams/ml are stated use those directly.
 - PORTION DEFAULTS -- when the amount is vague or unstated, assume ONE realistic
@@ -450,6 +455,10 @@ function scaleMacros(per: Macros, perGrams: number, grams: number): Macros {
 
 // -- DB resolution -------------------------------------------------------------
 const FUZZY_MIN_SIMILARITY = 0.55 // bumped from 0.3 — chai↔chia, almond↔almonds were leaking through
+// A match this strong to a single curated row is trusted over decomposing an
+// item's AI ingredients (see resolveItem step 2). High enough that real
+// multi-ingredient dishes don't accidentally collapse onto one library row.
+const STRONG_MATCH_SIMILARITY = 0.72
 
 type FoodRow = {
   id: string; name: string; serving_grams: number
@@ -587,7 +596,7 @@ async function decompose(item: AiItem, warnings: string[]): Promise<ResolvedItem
   }
 }
 
-async function resolveItem(item: AiItem, warnings: string[]): Promise<ResolvedItem> {
+async function resolveItem(item: AiItem, userId: string, warnings: string[]): Promise<ResolvedItem> {
   const normalized = normalizeName(item.name)
 
   // 1. Exact library match wins first — calibrated seed/IFCT values are stable
@@ -595,13 +604,22 @@ async function resolveItem(item: AiItem, warnings: string[]): Promise<ResolvedIt
   const exact = await findExactFood(item.name)
   if (exact) return buildMatched(item, exact, 'library', warnings)
 
-  // 2. Otherwise, if it's a composite dish with ingredients, sum them from the
+  // 2. A STRONG fuzzy match to a curated row beats decomposing. Named products
+  //    like "protine atta roti" -> "Mill protein roti" carry macros (added
+  //    protein) that decomposing from generic staples (plain wheat flour) would
+  //    silently lose. The high threshold means real multi-ingredient dishes
+  //    (kadhi, sabzi) — which don't strong-match any single row — still decompose.
+  const fuzzy = await findFuzzyFood(item.name)
+  if (fuzzy && fuzzy.similarity >= STRONG_MATCH_SIMILARITY) {
+    return buildMatched(item, fuzzy.food, 'fuzzy', warnings)
+  }
+
+  // 3. Otherwise, if it's a composite dish with ingredients, sum them from the
   //    DB — accurate for home food the library doesn't have as one row.
   const composed = await decompose(item, warnings)
   if (composed) return composed
 
-  // 3. Fuzzy whole-item match.
-  const fuzzy = await findFuzzyFood(item.name)
+  // 4. Weaker fuzzy whole-item match.
   if (fuzzy) {
     if (fuzzy.similarity < 0.6) warnings.push(`low_confidence_match:${item.name}->${fuzzy.food.name}`)
     return buildMatched(item, fuzzy.food, 'fuzzy', warnings)
@@ -632,10 +650,15 @@ async function resolveItem(item: AiItem, warnings: string[]): Promise<ResolvedIt
   const macros = scaleMacros(item.estimate_per_100g, 100, grams)
   warnings.push(`ai_estimated:${item.name}`)
 
+  // Arbiter must be (user_id, normalized_name) — the plain unique added in
+  // migration 055. The legacy `ai_food_estimates_global_norm_uidx` is partial
+  // (WHERE user_id IS NULL) and can't be reached via a column-list arbiter, so
+  // upserting with just `normalized_name` used to fail with PostgREST 42P10.
   const { error: insertErr } = await serviceClient
     .from('ai_food_estimates')
     .upsert(
       {
+        user_id: userId,
         normalized_name: normalized,
         name: item.name,
         calories: item.estimate_per_100g.calories,
@@ -647,7 +670,7 @@ async function resolveItem(item: AiItem, warnings: string[]): Promise<ResolvedIt
         serving_grams: 100,
         source: 'ai_estimated',
       },
-      { onConflict: 'normalized_name', ignoreDuplicates: true },
+      { onConflict: 'user_id,normalized_name', ignoreDuplicates: true },
     )
   if (insertErr) console.error('ai_food_estimates_insert_error', insertErr.message)
 
@@ -771,7 +794,7 @@ Deno.serve(async (req) => {
   const resolved: ResolvedItem[] = []
   for (const item of aiItems) {
     try {
-      resolved.push(await resolveItem(item, warnings))
+      resolved.push(await resolveItem(item, user.id, warnings))
     } catch (e) {
       console.error('resolve_item_error', e instanceof Error ? e.message : 'unknown')
       warnings.push(`resolve_failed:${item.name}`)

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertTriangle, CheckCircle2, Loader2, Moon, CalendarDays } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Loader2, Moon, CalendarDays, Flame } from 'lucide-react'
 import { useProfile } from '../profile/ProfileContext'
 import { useTodayWorkout } from './hooks/useTodayWorkout'
 import { useExerciseDetails } from './hooks/useExerciseDetails'
@@ -12,6 +12,9 @@ import { WarmupStretchCard } from './WarmupStretchCard'
 import { useSessionPrep } from './hooks/useSessionPrep'
 import { routineForDay } from '../../lib/constants/warmupStretch'
 import { injuryTextToTags } from './injuryTags'
+import { estimateStrengthCalories, type LoggedExerciseForKcal } from './strengthCalories'
+import { useBodyweightKg } from '../weight/hooks/useBodyweightKg'
+import { Term } from '../../components/ui/Term'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 // Local-timezone calendar date — matches useWorkoutLogger (never UTC toISOString).
@@ -75,7 +78,12 @@ export function TodayWorkout() {
   const logger = useWorkoutLogger(activePlan?.id ?? null, dayPlan?.label ?? '', selectedDate)
   const prep = useSessionPrep(selectedDate, dayPlan?.label ?? '')
   const routine = dayPlan ? routineForDay(dayPlan.label) : null
-  const [summary, setSummary] = useState<{ duration: number; totalVolume: number; exerciseCount: number } | null>(null)
+  const bodyweightKg = useBodyweightKg()
+  const [summary, setSummary] = useState<{ duration: number; duration_min: number | null; totalVolume: number; exerciseCount: number; calories: number | null; persisted: boolean } | null>(null)
+  // Editable duration on the summary card, prefilled from the seeded duration_min
+  // (blank when null so the user types the real value). String state so an empty
+  // field is legal mid-edit.
+  const [durationInput, setDurationInput] = useState('')
   const [prehabConfirm, setPrehabConfirm] = useState(false)
 
   const isDeloadDay = dayPlan ? /deload/i.test(dayPlan.label) : false
@@ -85,6 +93,7 @@ export function TodayWorkout() {
     setSelectedDate(iso)
     setTrainAnywayIndex(null)
     setSummary(null)
+    setDurationInput('')
   }
 
   if (!activePlan) {
@@ -125,8 +134,34 @@ export function TodayWorkout() {
       setPrehabConfirm(true)
       return
     }
-    const r = await logger.finishWorkout({ prehabSkipped: skippedPrehab.length > 0 })
-    if (r) setSummary(r)
+    // Plan-modeled strength calorie estimate (display-only). Rest comes from the
+    // plan slot for each logged (possibly swapped) exercise; movement pattern from
+    // the library detail decides the compound/isolation MET tier.
+    const slotByActiveId: Record<string, { rest_s: number; rir: number }> = {}
+    for (const slot of dayPlan?.exercises ?? []) {
+      const activeId = logger.swapMap[slot.ref.id] ?? slot.ref.id
+      slotByActiveId[activeId] = { rest_s: slot.rest_s, rir: slot.rir }
+    }
+    const kcalExercises: LoggedExerciseForKcal[] = Object.entries(logger.loggedExercises)
+      .filter(([, sets]) => sets.length > 0)
+      .map(([exerciseId, sets]) => ({
+        sets,
+        movementPattern: details[exerciseId]?.movement_pattern ?? null,
+        equipment: details[exerciseId]?.equipment ?? [],
+        restSeconds: slotByActiveId[exerciseId]?.rest_s ?? null,
+        targetRir: slotByActiveId[exerciseId]?.rir ?? null,
+      }))
+    const calories = estimateStrengthCalories({
+      exercises: kcalExercises,
+      bodyweightKg,
+      warmupDone: prep.done.warmup.size > 0,
+    })
+
+    const r = await logger.finishWorkout({ prehabSkipped: skippedPrehab.length > 0, calories })
+    if (r) {
+      setSummary(r)
+      setDurationInput(r.duration_min != null ? String(r.duration_min) : '')
+    }
     setPrehabConfirm(false)
   }
 
@@ -212,7 +247,11 @@ export function TodayWorkout() {
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-bold text-white">{dayPlan.label}</h2>
-              {isDeloadDay && <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">deload</span>}
+              {isDeloadDay && (
+                <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+                  <Term term="deload" className="decoration-amber-400/60">deload</Term>
+                </span>
+              )}
               <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-300">Logging: {loggingLabel}</span>
             </div>
             <p className="mt-1 text-xs text-slate-400">
@@ -252,8 +291,52 @@ export function TodayWorkout() {
               <CheckCircle2 size={22} className="mx-auto text-emerald-400" />
               <p className="mt-1 text-sm font-semibold text-white">Workout complete</p>
               <p className="mt-0.5 text-xs text-slate-300">
-                {summary.exerciseCount} exercises · {Math.round(summary.totalVolume).toLocaleString()} kg total volume · {summary.duration} min
+                {summary.exerciseCount} exercises · {Math.round(summary.totalVolume).toLocaleString()} kg <Term term="total volume">total volume</Term>
+                {durationInput.trim() !== '' ? ` · ${durationInput.trim()} min` : ''}
               </p>
+              {/* Truthful, user-editable duration — the timestamp delta is unreliable
+                  (started_at = first save, completed_at = finish), so the user sets
+                  the real value here. Persists to duration_min; never affects calories. */}
+              <div className="mt-3 flex items-center justify-center gap-2">
+                <label htmlFor="workout-duration" className="text-xs text-slate-400">Duration</label>
+                <input
+                  id="workout-duration"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={600}
+                  value={durationInput}
+                  placeholder="—"
+                  onChange={(e) => setDurationInput(e.target.value)}
+                  onBlur={() => {
+                    const v = durationInput.trim()
+                    if (v === '') return
+                    const n = Number(v)
+                    if (!Number.isFinite(n)) return
+                    const clamped = Math.max(0, Math.min(600, Math.round(n)))
+                    setDurationInput(String(clamped))
+                    void logger.updateDuration(clamped)
+                  }}
+                  className="h-11 w-16 rounded-lg border border-white/10 bg-white/5 text-center text-sm font-semibold text-white [appearance:textfield] focus:border-emerald-500/50 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <span className="text-xs text-slate-400">min</span>
+              </div>
+              {summary.calories != null && (
+                <>
+                  <p className="mt-2 flex items-center justify-center gap-1 text-sm font-bold text-orange-400">
+                    <Flame size={14} /> ~{summary.calories.toLocaleString()} kcal
+                    <span className="text-[10px] font-normal text-slate-500">est</span>
+                  </p>
+                  <p className="mt-0.5 text-[10px] leading-tight text-slate-500">
+                    Rough estimate — your calorie target already accounts for training.
+                  </p>
+                </>
+              )}
+              {!summary.persisted && (
+                <p className="mt-2 text-[10px] leading-tight text-amber-400">
+                  Your sets are saved, but this session is too old to mark complete. Log it within a week to record completion.
+                </p>
+              )}
             </div>
           ) : (
             <>
@@ -262,9 +345,9 @@ export function TodayWorkout() {
                   <div className="flex items-start gap-2">
                     <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-400" />
                     <div>
-                      <p className="text-sm font-semibold text-white">Prehab not logged</p>
+                      <p className="text-sm font-semibold text-white">Injury-prevention moves not logged</p>
                       <p className="mt-1 text-xs leading-relaxed text-slate-300">
-                        You haven't logged your prehab ({skippedPrehabNames.join(' / ')}). It's mandatory for your neck/shoulder — log it before finishing?
+                        You haven't logged your <Term term="prehab" className="decoration-amber-400/60">prehab</Term> ({skippedPrehabNames.join(' / ')}) — the small moves that keep your neck and shoulders healthy. They're a must for you — log them before finishing?
                       </p>
                       <div className="mt-3 flex gap-2">
                         <button

@@ -238,9 +238,9 @@ export function detectRecovery(input: RecoveryInput): RecoveryResult {
     const top = decliningLifts.slice().sort((a, b) => b.dropPct - a.dropPct)[0]
     notes.push(`strength ↓ ${(top.dropPct * 100).toFixed(0)}% (${top.name})`)
   }
-  if (rirMaxed) notes.push('sets grinding to failure (RIR maxed)')
-  if (bodyFlat === true) notes.push('28-day weight & waist flat')
-  if (sleepLow && sleepAvg != null) notes.push(`sleep ~${sleepAvg.toFixed(1)}h`)
+  if (rirMaxed) notes.push('hitting failure on most sets (no reps left in the tank)')
+  if (bodyFlat === true) notes.push('weight & waist not moving (4-week average)')
+  if (sleepLow && sleepAvg != null) notes.push(`sleep ~${sleepAvg.toFixed(1)}h a night`)
 
   const evidence: RecoveryEvidence = {
     strengthDown,
@@ -267,17 +267,17 @@ function buildMessage(
   const isCut = goalMode === 'cut'
   // For B (cut) the lever is a refeed; for A (recomp) it's sleep + volume.
   const fix = isCut
-    ? 'add a refeed day (eat up to maintenance) and an extra hour of sleep, then drop one set on the lifts you’re grinding'
-    : 'bank an extra hour of sleep and cut one set on the lifts you’re grinding'
+    ? 'eat a bit more for a day (up to your maintenance calories) and get an extra hour of sleep, then drop one set on the lifts you’re struggling with'
+    : 'get an extra hour of sleep and drop one set on the lifts you’re struggling with'
 
   if (status === 'under_recovered') {
     return {
-      title: 'Heads up — looks like under-recovery',
+      title: 'Heads up — you may need more recovery',
       body:
-        `Your strength has stalled and you’ve been maxing out effort` +
+        `Your strength has stalled and you’ve been pushing every set to the limit` +
         (ev.sleepLow ? ' on short sleep' : '') +
-        `${isCut ? ' while the scale and tape aren’t moving' : ''}. ` +
-        `This almost always means under-recovery (or under-eating) — not lack of effort. ` +
+        `${isCut ? ' while your weight and waist aren’t moving' : ''}. ` +
+        `This almost always means you’re not recovering enough (or not eating enough) — not that you aren’t trying hard. ` +
         `Best move: ${fix}. Don’t push harder this week — this is your body asking to recover.`,
     }
   }

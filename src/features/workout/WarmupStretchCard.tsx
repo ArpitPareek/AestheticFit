@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Flame, Leaf, Check, ChevronDown } from 'lucide-react'
 import type { RoutineItem } from '../../lib/constants/warmupStretch'
+import { moveHint } from '../../lib/constants/warmupStretch'
 import type { PrepKind } from './hooks/useSessionPrep'
 
 // Collapsible, ordered warm-up / cool-down checklist. Items are numbered so the
@@ -58,6 +59,7 @@ export function WarmupStretchCard({
         <ul className="border-t border-white/5 px-2 pb-2 pt-1">
           {items.map((it, i) => {
             const isDone = done.has(it.key)
+            const hint = moveHint(it.key)
             return (
               <li key={it.key}>
                 <button
@@ -74,6 +76,7 @@ export function WarmupStretchCard({
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className={`block text-sm ${isDone ? 'text-slate-500 line-through' : 'text-slate-100'}`}>{it.name}</span>
+                    {hint && !isDone && <span className="mt-0.5 block text-[11px] leading-snug text-slate-500">{hint}</span>}
                   </span>
                   <span className="shrink-0 text-[11px] text-slate-500">{it.detail}</span>
                 </button>

@@ -25,7 +25,7 @@ export function PhaseAdvanceBanner({ status, phase, onAdvanced }: Props) {
       <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
         <p className="text-sm font-semibold text-emerald-300">Program complete</p>
         <p className="mt-0.5 text-[11px] leading-relaxed text-slate-300">
-          You&rsquo;ve finished Phase {phase}, the final block. Hold here — keep training light and coast. Your progress is
+          You&rsquo;ve finished Phase {phase}, the final one. Hold here — keep training light and easy. Your progress is
           in the logs for your coach to pick up.
         </p>
       </div>
@@ -54,7 +54,7 @@ export function PhaseAdvanceBanner({ status, phase, onAdvanced }: Props) {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-amber-200">Phase {phase} complete</p>
           <p className="mt-0.5 text-[11px] leading-relaxed text-slate-300">
-            You&rsquo;ve reached the end of this block. Start Phase {next} when you&rsquo;re ready — it begins counting from
+            You&rsquo;ve reached the end of this phase. Start Phase {next} when you&rsquo;re ready — it begins counting from
             the day you tap.
           </p>
 

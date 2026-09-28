@@ -7,6 +7,8 @@ import type { ExerciseCues, ExerciseDetail } from './hooks/useExerciseDetails'
 import type { ExerciseHistory } from './hooks/useExerciseHistory'
 import type { ContraindicationTag } from './injuryTags'
 import { ExerciseMedia } from './ExerciseMedia'
+import { Term } from '../../components/ui/Term'
+import { GlossyText } from '../../components/ui/GlossyText'
 
 const MAX_RIR = 5
 
@@ -34,8 +36,8 @@ const SWAP_REASONS = [
 
 const PATTERN_LABEL: Record<string, string> = {
   push: 'Push', pull: 'Pull', hinge: 'Hinge', squat: 'Squat', carry: 'Carry', isolation: 'Isolation',
-  horizontal_press: 'Horiz. press', vertical_press: 'Vert. press',
-  horizontal_pull: 'Horiz. pull', vertical_pull: 'Vert. pull',
+  horizontal_press: 'Horizontal press', vertical_press: 'Vertical press',
+  horizontal_pull: 'Horizontal pull', vertical_pull: 'Vertical pull',
   hip_hinge: 'Hip hinge', lateral_raise: 'Lateral raise',
 }
 
@@ -236,7 +238,7 @@ export function SessionExerciseCard({ slot, orderIndex, details, history, isDelo
       setSaveWarning('Log reps for at least one set before saving.')
       return
     }
-    setSaveWarning(clampedAny ? `RIR clamped to 0-${MAX_RIR}.` : null)
+    setSaveWarning(clampedAny ? `Reps-left (RIR) should be 0–${MAX_RIR} — adjusted it for you.` : null)
     onSave(activeId, name, parsed, orderIndex, swapped ? { swappedFromRef: slot.ref.id, swapReason } : undefined)
   }
 
@@ -305,10 +307,16 @@ export function SessionExerciseCard({ slot, orderIndex, details, history, isDelo
             {detail && <span className="text-[11px] text-slate-400">{[detail.primary_muscle, ...detail.secondary_muscles].map(prettyMuscle).join(' · ')}</span>}
           </div>
 
-          {slot.note && <p className="rounded-lg bg-white/5 px-2.5 py-1.5 text-[11px] italic text-slate-300">Coach: {slot.note}</p>}
+          {slot.note && (
+            <p className="rounded-lg bg-white/5 px-2.5 py-1.5 text-[11px] italic text-slate-300">
+              Coach: <GlossyText text={slot.note} />
+            </p>
+          )}
 
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1.5">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-emerald-400">Recommendation{isDeloadDay ? ' · deload' : ''}</p>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-emerald-400">
+              Recommendation{isDeloadDay ? <> · <Term term="deload" className="decoration-emerald-500/60">deload</Term></> : ''}
+            </p>
             <p className="mt-0.5 text-xs text-slate-200">{rec.reason}</p>
             {lastSession && (
               <p className="mt-0.5 text-[10px] text-slate-500">
@@ -346,11 +354,11 @@ export function SessionExerciseCard({ slot, orderIndex, details, history, isDelo
                 Log your sets ·{' '}
                 <span className="text-slate-500">
                   {isLadder && ladderMode === 'assist'
-                    ? 'assist-kg × reps @ RIR'
+                    ? <>assist-kg × reps @ <Term term="rir">RIR</Term></>
                     : isLadder && ladderMode === 'surface'
-                      ? 'surface × reps @ RIR'
-                      : 'kg × reps @ RIR'}{' '}
-                  (target RIR {slot.rir})
+                      ? <>surface × reps @ <Term term="rir">RIR</Term></>
+                      : <>kg × reps @ <Term term="rir">RIR</Term></>}{' '}
+                  (aim to finish each set with ~{slot.rir} rep{slot.rir === 1 ? '' : 's'} left)
                 </span>
               </p>
               <button type="button" onClick={prefill} className="text-[11px] text-emerald-400 active:text-emerald-300">Prefill</button>
@@ -358,9 +366,10 @@ export function SessionExerciseCard({ slot, orderIndex, details, history, isDelo
 
             {isLadder && (
               <p className="rounded-lg bg-sky-500/10 px-2.5 py-1.5 text-[11px] text-sky-300">
+                <Term term="ladder" className="decoration-sky-400/60">Ladder</Term>{' — '}
                 {ladderMode === 'assist'
-                  ? 'Ladder — the win is your ASSISTANCE dropping week to week (less help = stronger), not more reps. 0 = unassisted.'
-                  : 'Ladder — the win is LOWERING the surface toward the floor (Wall → … → Floor), not more reps.'}
+                  ? 'the goal is needing LESS help week to week (less help = stronger), not more reps. Enter 0 when you need no help at all.'
+                  : 'the goal is working toward the floor over the weeks (Wall → … → Floor), not more reps.'}
               </p>
             )}
 
@@ -511,7 +520,7 @@ function CueList({ label, items, color }: { label: string; items?: string[]; col
       <p className={`mb-0.5 text-[10px] font-medium uppercase tracking-wide ${color}`}>{label}</p>
       <ul className="space-y-0.5">
         {items.map((c, i) => (
-          <li key={i} className="text-xs leading-relaxed text-slate-300">• {c}</li>
+          <li key={i} className="text-xs leading-relaxed text-slate-300">• <GlossyText text={c} /></li>
         ))}
       </ul>
     </div>
@@ -526,14 +535,14 @@ function CueBlock({ cues }: { cues: ExerciseCues }) {
       <CueList label="Setup" items={cues.setup} color="text-slate-400" />
       <CueList label="Execution" items={cues.execution} color="text-emerald-400" />
       {cues.breathing && (
-        <p className="text-xs text-slate-400"><span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Breathing: </span>{cues.breathing}</p>
+        <p className="text-xs text-slate-400"><span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Breathing: </span><GlossyText text={cues.breathing} /></p>
       )}
       <CueList label="Common mistakes" items={cues.common_mistakes} color="text-red-400" />
       {cues.ruin_your_gains?.length ? (
         <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-2.5 py-1.5">
           <p className="text-[10px] font-medium uppercase tracking-wide text-red-400">Don't waste the set</p>
           {cues.ruin_your_gains.map((c, i) => (
-            <p key={i} className="mt-0.5 text-xs text-slate-200">{c}</p>
+            <p key={i} className="mt-0.5 text-xs text-slate-200"><GlossyText text={c} /></p>
           ))}
         </div>
       ) : null}

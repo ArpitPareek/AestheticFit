@@ -1223,6 +1223,9 @@ export interface Database {
           notes: string
           created_at: string
           prehab_skipped: boolean
+          calories: number | null
+          calories_source: string | null
+          duration_min: number | null
         }
         Insert: {
           id?: string
@@ -1237,6 +1240,9 @@ export interface Database {
           notes?: string
           created_at?: string
           prehab_skipped?: boolean
+          calories?: number | null
+          calories_source?: string | null
+          duration_min?: number | null
         }
         Update: {
           id?: string
@@ -1251,6 +1257,9 @@ export interface Database {
           notes?: string
           created_at?: string
           prehab_skipped?: boolean
+          calories?: number | null
+          calories_source?: string | null
+          duration_min?: number | null
         }
         Relationships: [
           {

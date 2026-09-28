@@ -23,6 +23,7 @@ import { useDashboardData } from './useDashboardData'
 import { RecoveryWatch } from '../tracking/RecoveryWatch'
 import { useAuth } from '../auth/AuthContext'
 import type { TabId } from '../../components/layout/AppShell'
+import { Term } from '../../components/ui/Term'
 
 interface DashboardProps {
   onNavigate: (tab: TabId) => void
@@ -88,8 +89,8 @@ function getExpectationCard(week: number): { title: string; body: string } | nul
     body: "You won't see changes yet. Your body is adapting to the new routine. The most important thing right now is showing up.",
   }
   if (week <= 4) return {
-    title: 'Neural Adaptation',
-    body: 'Your nervous system is learning. You should feel more comfortable with exercises. Strength gains are happening internally.',
+    title: 'Your Body Is Learning',
+    body: 'Your muscles and coordination are learning the movements, so exercises should start feeling smoother. Strength is building even before you can see it.',
   }
   if (week <= 6) return {
     title: 'First Signs',
@@ -97,24 +98,24 @@ function getExpectationCard(week: number): { title: string; body: string } | nul
   }
   if (week <= 8) return {
     title: 'Visible Changes',
-    body: 'Visible changes begin here. Compare to your starting photos. The consistency is compounding.',
+    body: 'Visible changes begin here. Compare to your starting photos — the consistency is adding up.',
   }
   if (week <= 12) return {
-    title: 'Compound Effect',
-    body: "Compound effect phase. This is where transformation accelerates. Don't plateau — progressive overload matters now more than ever.",
+    title: "It's Adding Up",
+    body: "This is where results speed up. Keep doing a little more each week — an extra rep or a touch more weight — so your body has a reason to keep changing.",
   }
   return {
-    title: 'Adaptation Zone',
-    body: "You're in the adaptation zone. Consider reassessing your plan if progress has stalled.",
+    title: 'Time to Reassess',
+    body: "Progress may be leveling off. If it has, it's worth reviewing your plan to find the next step.",
   }
 }
 
 function getSkinExpectation(week: number, usesTretinoin: boolean): string | null {
   if (usesTretinoin && week >= 2 && week <= 6) {
-    return "Skin purging is normal. Don't quit."
+    return "A short breakout when starting a new skin treatment is normal — don't quit."
   }
   if (week >= 8) {
-    return 'Texture improvements should be visible. Check your fortnightly photos.'
+    return "Your skin's texture should be improving. Check your every-two-weeks photos."
   }
   return null
 }
@@ -225,7 +226,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             <span className="text-[10px] font-bold text-emerald-400">{Math.round(totals.protein_g)}g</span>
           </CircularProgress>
           <span className="mt-1 text-[10px] font-medium text-emerald-400/80">
-            / {targets.protein_g}g floor
+            / {targets.protein_g}g <Term term="protein floor">floor</Term>
           </span>
         </div>
 
@@ -320,10 +321,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         </div>
         <p className="mt-2 text-[10px] text-slate-500">
           {goalMode === 'recomp'
-            ? `Protein floor ${targets.protein_g}g — hit this first, calories second.`
+            ? <>Get your <Term term="protein floor">protein floor</Term> ({targets.protein_g}g) first, calories second.</>
             : goalMode === 'cut'
-              ? `Protein floor ${targets.protein_g}g — non-negotiable.`
-              : `Target ${targets.protein_g}g protein daily.`}
+              ? <>Getting {targets.protein_g}g protein is a must — it protects your muscle.</>
+              : `Aim for ${targets.protein_g}g protein daily.`}
         </p>
         {isPast2pm && proteinPct < 0.5 && (
           <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-amber-500/10 px-2.5 py-1.5">
